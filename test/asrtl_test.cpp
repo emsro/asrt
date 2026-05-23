@@ -2110,6 +2110,64 @@ TEST_CASE( "flat_tree_find_by_key_leaf_parent" )
         asrt_flat_tree_deinit( &tree );
 }
 
+TEST_CASE( "flat_tree_u32d2_wire_size" )
+{
+        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_U32D2 };
+        CHECK_EQ( 8U, asrt_flat_value_wire_size( v ) );
+}
+
+TEST_CASE( "flat_tree_u32d2_write_and_decode" )
+{
+        struct asrt_flat_u32d2 orig    = { .hi = 0x12345678U, .lo = 0xABCDEF00U };
+        struct asrt_flat_value v_write = { .type = ASRT_FLAT_STYPE_U32D2 };
+        v_write.data.s.u32d2_val       = orig;
+
+        uint8_t  buf[8];
+        uint8_t* p = buf;
+        asrt_flat_value_write( &p, v_write );
+        CHECK_EQ( buf + 8, p );
+
+        // big-endian: hi first, lo second
+        CHECK_EQ( 0x12U, buf[0] );
+        CHECK_EQ( 0x34U, buf[1] );
+        CHECK_EQ( 0x56U, buf[2] );
+        CHECK_EQ( 0x78U, buf[3] );
+        CHECK_EQ( 0xABU, buf[4] );
+        CHECK_EQ( 0xCDU, buf[5] );
+        CHECK_EQ( 0xEFU, buf[6] );
+        CHECK_EQ( 0x00U, buf[7] );
+
+        struct asrt_span       span   = { .b = buf, .e = buf + 8 };
+        struct asrt_flat_value v_read = {};
+        REQUIRE_EQ( ASRT_SUCCESS, asrt_flat_value_decode( &span, ASRT_FLAT_STYPE_U32D2, &v_read ) );
+        CHECK_EQ( ASRT_FLAT_STYPE_U32D2, v_read.type );
+        CHECK_EQ( orig.hi, v_read.data.s.u32d2_val.hi );
+        CHECK_EQ( orig.lo, v_read.data.s.u32d2_val.lo );
+}
+
+TEST_CASE( "flat_tree_u32d2_append_and_query" )
+{
+        struct asrt_allocator alloc = asrt_default_allocator();
+        struct asrt_flat_tree tree;
+        REQUIRE_EQ( ASRT_SUCCESS, asrt_flat_tree_init( &tree, alloc, 4, 8 ) );
+        REQUIRE_EQ(
+            ASRT_SUCCESS, asrt_flat_tree_append_cont( &tree, 0, 1, NULL, ASRT_FLAT_CTYPE_OBJECT ) );
+
+        union asrt_flat_scalar sc = {};
+        sc.u32d2_val              = { .hi = 0xDEADBEEFU, .lo = 0xCAFEBABEU };
+        REQUIRE_EQ(
+            ASRT_SUCCESS,
+            asrt_flat_tree_append_scalar( &tree, 1, 2, "ts", ASRT_FLAT_STYPE_U32D2, sc ) );
+
+        struct asrt_flat_query_result r;
+        REQUIRE_EQ( ASRT_SUCCESS, asrt_flat_tree_query( &tree, 2, &r ) );
+        CHECK_EQ( ASRT_FLAT_STYPE_U32D2, r.value.type );
+        CHECK_EQ( 0xDEADBEEFU, r.value.data.s.u32d2_val.hi );
+        CHECK_EQ( 0xCAFEBABEU, r.value.data.s.u32d2_val.lo );
+
+        asrt_flat_tree_deinit( &tree );
+}
+
 
 /// Flatten an asrt_send_req into a contiguous buffer, returns total byte count.
 static uint32_t strm_flatten( uint8_t* out, struct asrt_send_req const* req )

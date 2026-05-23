@@ -481,6 +481,10 @@ enum asrt_status asrt_flat_value_decode(
                 memcpy( &val->data.s.float_val, &bits, sizeof bits );
                 break;
         }
+        case ASRT_FLAT_STYPE_U32D2:
+                asrt_cut_u32( &buff->b, &val->data.s.u32d2_val.hi );
+                asrt_cut_u32( &buff->b, &val->data.s.u32d2_val.lo );
+                break;
         case ASRT_FLAT_CTYPE_OBJECT:
         case ASRT_FLAT_CTYPE_ARRAY:
                 asrt_cut_u32( &buff->b, &val->data.cont.first_child );
@@ -502,6 +506,7 @@ size_t asrt_flat_value_wire_size( struct asrt_flat_value v )
         case ASRT_FLAT_STYPE_FLOAT:
         case ASRT_FLAT_STYPE_I32:
                 return 4U;
+        case ASRT_FLAT_STYPE_U32D2:
         case ASRT_FLAT_CTYPE_OBJECT:
         case ASRT_FLAT_CTYPE_ARRAY:
                 return 8U;
@@ -538,6 +543,10 @@ void asrt_flat_value_write( uint8_t** p, struct asrt_flat_value v )
                 asrt_add_u32( p, bits );
                 break;
         }
+        case ASRT_FLAT_STYPE_U32D2:
+                asrt_add_u32( p, v.data.s.u32d2_val.hi );
+                asrt_add_u32( p, v.data.s.u32d2_val.lo );
+                break;
         case ASRT_FLAT_CTYPE_OBJECT:
         case ASRT_FLAT_CTYPE_ARRAY:
                 asrt_add_u32( p, v.data.cont.first_child );

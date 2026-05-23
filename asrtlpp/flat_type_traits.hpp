@@ -100,4 +100,15 @@ struct flat_type_traits< arr >
         static constexpr bool is_scalar = false;
 };
 
+using u32d2 = asrt_flat_u32d2;
+
+template <>
+struct flat_type_traits< u32d2 >
+{
+        using raw_type                  = asrt_flat_u32d2;
+        using value_type                = asrt_flat_u32d2;
+        static constexpr auto flat_type = ASRT_FLAT_STYPE_U32D2;
+        static constexpr bool is_scalar = true;
+};
+
 }  // namespace asrt

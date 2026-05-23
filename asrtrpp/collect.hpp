@@ -59,6 +59,12 @@ struct collect_append_traits< bool > : flat_type_traits< bool >
 };
 
 template <>
+struct collect_append_traits< u32d2 > : flat_type_traits< u32d2 >
+{
+        static constexpr auto member = &asrt_flat_scalar::u32d2_val;
+};
+
+template <>
 struct collect_append_traits< obj > : flat_type_traits< obj >
 {
 };

@@ -1901,6 +1901,22 @@ TEST_CASE_FIXTURE( collect_cpp_ctx, "collect_cpp_set_and_append_all_types" )
         CHECK_EQ( 7U, coll.data.size() );
 }
 
+TEST_CASE_FIXTURE( collect_cpp_ctx, "collect_cpp_set_u32d2" )
+{
+        make_active();
+
+        asrt::flat_id obj_id = 0;
+        CHECK_EQ( ASRT_SUCCESS, asrt::set< asrt::obj >( cc, 0, "root", obj_id, {} ) );
+        drain_send_queue( &sq, &coll );
+
+        asrt::u32d2 ts{ .hi = 0xDEADBEEFU, .lo = 0xCAFEBABEU };
+        CHECK_EQ( ASRT_SUCCESS, asrt::set< asrt::u32d2 >( cc, obj_id, "ts", ts, {} ) );
+        drain_send_queue( &sq, &coll );
+
+        // 1 object + 1 u32d2 scalar = 2 messages
+        CHECK_EQ( 2U, coll.data.size() );
+}
+
 // ---------------------------------------------------------------------------
 // collect_sender (coroutine support)
 // ---------------------------------------------------------------------------

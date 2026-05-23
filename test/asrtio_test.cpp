@@ -1749,6 +1749,9 @@ TEST_CASE( "suite_output_files" )
                 CHECK( content.find( "42" ) != std::string::npos );
                 CHECK( content.find( "\"tag\"" ) != std::string::npos );
                 CHECK( content.find( "\"demo\"" ) != std::string::npos );
+                // u32d2 serialized as 64-bit: hi=0xDEADBEEF, lo=0xCAFEBABE => 16045690984833335998
+                CHECK( j["ts"].is_number_unsigned() );
+                CHECK( j["ts"].get< uint64_t >() == 0xDEADBEEFCAFEBABEULL );
         }
 
         // --- stream.0.csv for stream_demo_task ---

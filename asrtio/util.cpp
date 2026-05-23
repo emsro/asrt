@@ -252,6 +252,12 @@ static bool flat_tree_to_json_impl(
         case ASRT_FLAT_STYPE_STR:
                 out = res.value.data.s.str_val;
                 break;
+        case ASRT_FLAT_STYPE_U32D2: {
+                uint64_t v64 = ( static_cast< uint64_t >( res.value.data.s.u32d2_val.hi ) << 32U ) |
+                               res.value.data.s.u32d2_val.lo;
+                out = v64;
+                break;
+        }
         case ASRT_FLAT_CTYPE_OBJECT: {
                 if ( !flat_tree_to_json_object( tree, res, out ) )
                         return false;

@@ -41,6 +41,14 @@ extern "C" {
 
 typedef uint32_t asrt_flat_id;
 
+/// Two-word 64-bit value stored as two big-endian uint32_t halves.
+/// hi is the most-significant word, lo the least-significant.
+struct asrt_flat_u32d2
+{
+        uint32_t hi;
+        uint32_t lo;
+};
+
 /// Scalar value types — leaf data carried by nodes.
 enum asrt_flat_stype
 {
@@ -51,6 +59,7 @@ enum asrt_flat_stype
         ASRT_FLAT_STYPE_BOOL  = 4,
         ASRT_FLAT_STYPE_NULL  = 5,
         ASRT_FLAT_STYPE_I32   = 6,
+        ASRT_FLAT_STYPE_U32D2 = 9,  ///< Two-word value: hi(u32) + lo(u32), 8 bytes on wire.
 };
 
 /// Container value types — nodes that hold child lists.
@@ -73,11 +82,12 @@ struct asrt_flat_child_list
 
 union asrt_flat_scalar
 {
-        char const* str_val;
-        uint32_t    u32_val;
-        int32_t     i32_val;
-        float       float_val;
-        uint32_t    bool_val;
+        char const*            str_val;
+        uint32_t               u32_val;
+        int32_t                i32_val;
+        float                  float_val;
+        uint32_t               bool_val;
+        struct asrt_flat_u32d2 u32d2_val;
 };
 
 union asrt_flat_data

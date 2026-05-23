@@ -658,7 +658,17 @@ struct param_type_overview_task : asrt::task_test
 
 
 /// Collector demo: appends a small tree via the collect channel.
-/// Produces: root OBJECT → "value" U32=42, "tag" STR="demo"
+/// Exercises every collect type: obj, arr, u32, i32, float, str, bool, u32d2.
+/// Produces:
+///   root OBJECT
+///     "value"  U32    = 42
+///     "offset" I32    = -7
+///     "ratio"  FLOAT  = 1.5
+///     "tag"    STR    = "demo"
+///     "flag"   BOOL   = true
+///     "ts"     U32D2  = { hi=0xDEADBEEF, lo=0xCAFEBABE }
+///     "items"  ARRAY  → [U32=1, U32=2, U32=3]
+///     "sub"    OBJECT → "x" U32=0
 struct collect_demo_task : asrt::task_test
 {
         char const*          name = "collect_demo_task";
@@ -675,7 +685,18 @@ struct collect_demo_task : asrt::task_test
                 auto root = asrt::root_id( cc );
                 auto obj  = co_await asrt::append< asrt::obj >( cc, root );
                 co_await asrt::set( cc, obj, "value", 42U );
+                co_await asrt::set( cc, obj, "offset", -7 );
+                co_await asrt::set( cc, obj, "ratio", 1.5F );
                 co_await asrt::set( cc, obj, "tag", "demo" );
+                co_await asrt::set( cc, obj, "flag", true );
+                co_await asrt::set(
+                    cc, obj, "ts", asrt::u32d2{ .hi = 0xDEADBEEFU, .lo = 0xCAFEBABEU } );
+                auto arr = co_await asrt::set< asrt::arr >( cc, obj, "items" );
+                co_await asrt::append( cc, arr, 1U );
+                co_await asrt::append( cc, arr, 2U );
+                co_await asrt::append( cc, arr, 3U );
+                auto sub = co_await asrt::set< asrt::obj >( cc, obj, "sub" );
+                co_await asrt::set( cc, sub, "x", 0U );
         }
 };
 
