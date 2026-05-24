@@ -84,9 +84,11 @@ struct task_unit : asrt_test
         }
 
 private:
+        using task_type = decltype( std::declval< T >().exec() );
+
         T _def;
         // XXX: note that this being here is waste of memory - it is needed only per active test
-        ecor::connect_type< task< void >, recv > _op;
+        ecor::connect_type< task_type, recv > _op;
 };
 
 }  // namespace asrt
