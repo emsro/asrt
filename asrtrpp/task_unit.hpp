@@ -59,11 +59,11 @@ struct task_unit_recv
 
         asrt_test_state* done;
 
-        void set_value() { *done = ASRT_TEST_PASS; }
-        void set_error( ecor::task_error ) { *done = ASRT_TEST_FAIL; }
-        void set_error( test_fail_t ) { *done = ASRT_TEST_FAIL; }
-        void set_error( asrt::status ) { *done = ASRT_TEST_ERROR; }
-        void set_stopped() { *done = ASRT_TEST_FAIL; }
+        void set_value() const { *done = ASRT_TEST_PASS; }
+        void set_error( ecor::task_error ) const { *done = ASRT_TEST_FAIL; }
+        void set_error( test_fail_t ) const { *done = ASRT_TEST_FAIL; }
+        void set_error( asrt::status ) const { *done = ASRT_TEST_ERROR; }
+        void set_stopped() const { *done = ASRT_TEST_FAIL; }
 };
 
 /// Coroutine test adaptor that wraps a definition type T into an asrt_test
