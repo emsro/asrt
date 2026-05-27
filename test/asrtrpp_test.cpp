@@ -986,6 +986,31 @@ struct tu_multi_error : asrt::task_test
                 co_yield asrt::with_error{ ASRT_INIT_ERR };
         }
 };
+
+template < typename T >
+asrt_test_state run_task_unit_once(
+    asrt::task_ctx&       ctx,
+    asrt::task_unit< T >& u,
+    int                   max_ticks = 100 )
+{
+        asrt_test_input input{};
+        input.test_ptr   = &u;
+        input.continue_f = asrt::task_unit< T >::cb;
+
+        asrt_record rec{
+            .state = ASRT_TEST_INIT,
+            .inpt  = &input,
+        };
+
+        for ( int i = 0; i < max_ticks; ++i ) {
+                asrt::task_unit< T >::cb( &rec );
+                ctx.tick();
+                if ( rec.state != ASRT_TEST_RUNNING && rec.state != ASRT_TEST_INIT )
+                        break;
+        }
+
+        return rec.state;
+}
 }  // namespace
 // --- task_unit: construction ---
 
@@ -1090,8 +1115,9 @@ TEST_CASE_FIXTURE( tu_cb_ctx, "task_unit_cb_multi_step_pass" )
         asrt::task_unit< tu_multi_pass >::cb( &rec );
         CHECK_EQ( ASRT_TEST_RUNNING, rec.state );
 
-        // Tick the task core until the coroutine completes
+        // Drive with cb→tick pairs until the coroutine completes
         for ( int i = 0; i < 20; ++i ) {
+                asrt::task_unit< tu_multi_pass >::cb( &rec );
                 ctx.tick();
                 if ( rec.state != ASRT_TEST_RUNNING )
                         break;
@@ -1158,6 +1184,45 @@ TEST_CASE_FIXTURE( tu_cb_ctx, "task_unit_cb_noop_after_start" )
         st = asrt::task_unit< tu_multi_pass >::cb( &rec );
         CHECK_EQ( ASRT_SUCCESS, st );
         CHECK_EQ( ASRT_TEST_RUNNING, rec.state );
+}
+
+TEST_CASE( "task_unit_releases_op_memory_immediate_completion" )
+{
+        uint8_t                                                      storage[2048]{};
+        ecor::circular_buffer_memory< uint16_t >                     mem{ storage };
+        asrt::task_ctx                                               ctx{ mem };
+        std::vector< std::shared_ptr< asrt::task_unit< tu_pass > > > units;
+        units.reserve( 32 );
+
+        auto const baseline = mem.used_bytes();
+
+        for ( int i = 0; i < 32; ++i ) {
+                auto u = std::make_shared< asrt::task_unit< tu_pass > >( tu_pass{ ctx } );
+                CHECK_EQ( ASRT_TEST_PASS, run_task_unit_once( ctx, *u ) );
+                CHECK_EQ( baseline, mem.used_bytes() );
+                units.push_back( std::move( u ) );
+                CHECK_EQ( baseline, mem.used_bytes() );
+        }
+}
+
+TEST_CASE( "task_unit_releases_op_memory_async_completion" )
+{
+        uint8_t                                                            storage[2048]{};
+        ecor::circular_buffer_memory< uint16_t >                           mem{ storage };
+        asrt::task_ctx                                                     ctx{ mem };
+        std::vector< std::shared_ptr< asrt::task_unit< tu_multi_pass > > > units;
+        units.reserve( 32 );
+
+        auto const baseline = mem.used_bytes();
+
+        for ( int i = 0; i < 32; ++i ) {
+                auto u =
+                    std::make_shared< asrt::task_unit< tu_multi_pass > >( tu_multi_pass{ ctx } );
+                CHECK_EQ( ASRT_TEST_PASS, run_task_unit_once( ctx, *u ) );
+                CHECK_EQ( baseline, mem.used_bytes() );
+                units.push_back( std::move( u ) );
+                CHECK_EQ( baseline, mem.used_bytes() );
+        }
 }
 
 namespace
