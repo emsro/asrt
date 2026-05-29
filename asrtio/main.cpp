@@ -58,10 +58,8 @@ struct pbar_reporter : reporter_base
                 co_return;
         }
 
-        task< void > on_test_start(
-            std::string_view name,
-            uint32_t         run_idx,
-            uint32_t         run_total ) override
+        task< void > on_test_start( std::string_view name, uint32_t run_idx, uint32_t run_total )
+            override
         {
                 auto label = std::string{ name };
                 if ( run_total > 1 )
@@ -89,7 +87,8 @@ struct pbar_reporter : reporter_base
                 co_return;
         }
 
-        task< void > on_diagnostic( std::string_view file, uint32_t line, std::string_view extra ) override
+        task< void > on_diagnostic( std::string_view file, uint32_t line, std::string_view extra )
+            override
         {
                 auto loc = std::string{ file } + ":" + std::to_string( line );
                 if ( !extra.empty() )

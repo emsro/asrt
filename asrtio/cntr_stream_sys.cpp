@@ -220,7 +220,8 @@ task< void > run_test_suite(
 
                         if ( do_output )
                                 fs.create_directories( run_dir );
-                        co_await handle_diag( ctx, sys, reporter, fs, run_dir / "diag.csv", do_output );
+                        co_await handle_diag(
+                            ctx, sys, reporter, fs, run_dir / "diag.csv", do_output );
                         co_await handle_collect(
                             ctx,
                             sys.collect_tree(),
@@ -229,7 +230,8 @@ task< void > run_test_suite(
                             fs,
                             run_dir / "collect.json",
                             do_output );
-                        co_await handle_stream( ctx, sys.stream_take(), reporter, name, fs, run_dir, do_output );
+                        co_await handle_stream(
+                            ctx, sys.stream_take(), reporter, name, fs, run_dir, do_output );
 
                         double ms     = static_cast< double >( ( sys.clk().now() - t0 ).count() );
                         bool   passed = ( res.res == ASRT_TEST_RESULT_SUCCESS );

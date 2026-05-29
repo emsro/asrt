@@ -169,12 +169,13 @@ struct suite_reporter
         virtual task< void > on_diagnostic(
             std::string_view file,
             uint32_t         line,
-            std::string_view extra )                                                              = 0;
+            std::string_view extra ) = 0;
         virtual task< void > on_collect_data(
-            std::string_view name, asrt_flat_tree const* tree )                               = 0;
+            std::string_view      name,
+            asrt_flat_tree const* tree ) = 0;
         virtual task< void > on_stream_data(
             std::string_view            name,
-            asrt::stream_schemas const& schemas )                                              = 0;
+            asrt::stream_schemas const& schemas ) = 0;
         virtual ~suite_reporter()                 = default;
 };
 

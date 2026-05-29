@@ -60,9 +60,15 @@ static std::vector< uint8_t > make_cobs_packet( uint16_t chid, std::vector< uint
                 *pp++ = b;
         size_t raw_len = pp - raw;
 
-        uint8_t              out[1024];
-        struct asrt_rec_span in_sp{ .b = raw, .e = raw + raw_len, .next = nullptr };
-        struct asrt_span     out_sp{ .b = out, .e = out + sizeof( out ) };
+        uint8_t out[1024];
+        struct asrt_rec_span in_sp
+        {
+                .b = raw, .e = raw + raw_len, .next = nullptr
+        };
+        struct asrt_span out_sp
+        {
+                .b = out, .e = out + sizeof( out )
+        };
         REQUIRE( asrt_cobs_encode_buffer( &in_sp, &out_sp ) == ASRT_SUCCESS );
 
         std::vector< uint8_t > result( out_sp.b, out_sp.e );
@@ -78,7 +84,7 @@ static asrtio::cobs_node make_cobs_node( asrt_node* node, std::function< void( s
         cn.on_error = std::move( on_err );
         asrt_cobs_ibuffer_init(
             &cn.recv,
-            (struct asrt_span) { .b = cn.ibuffer, .e = cn.ibuffer + sizeof( cn.ibuffer ) } );
+            ( struct asrt_span ){ .b = cn.ibuffer, .e = cn.ibuffer + sizeof( cn.ibuffer ) } );
         return cn;
 }
 
@@ -95,12 +101,10 @@ TEST_CASE( "cobs_on_data_dispatch" )
         asrt_node test_node{};
         test_node.chid     = ASRT_CORE;
         test_node.e_cb_ptr = &cap;
-        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* arg )->enum asrt_status
-        {
-                if ( event != ASRT_EVENT_RECV )
-                        return ASRT_SUCCESS;
+        test_node.e_cb = []( void* ptr, enum asrt_event_e event, void* arg ) -> enum asrt_status {
+                if ( event != ASRT_EVENT_RECV ) return ASRT_SUCCESS;
                 struct asrt_span sp = *static_cast< struct asrt_span* >( arg );
-                auto&            c  = *static_cast< recv_capture* >( ptr );
+                auto& c             = *static_cast< recv_capture* >( ptr );
                 c.payload.assign( sp.b, sp.e );
                 ++c.call_cnt;
                 return ASRT_SUCCESS;
@@ -125,8 +129,7 @@ TEST_CASE( "cobs_on_data_error_cb" )
 {
         asrt_node dummy_node{};
         dummy_node.chid = ASRT_CORE;
-        dummy_node.e_cb = []( void*, enum asrt_event_e, void* )->enum asrt_status
-        {
+        dummy_node.e_cb = []( void*, enum asrt_event_e, void* ) -> enum asrt_status {
                 return ASRT_SUCCESS;
         };
 
@@ -152,10 +155,8 @@ TEST_CASE( "cobs_on_data_multi_packet" )
         asrt_node test_node{};
         test_node.chid     = ASRT_CORE;
         test_node.e_cb_ptr = &cap;
-        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* )->enum asrt_status
-        {
-                if ( event != ASRT_EVENT_RECV )
-                        return ASRT_SUCCESS;
+        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* ) -> enum asrt_status {
+                if ( event != ASRT_EVENT_RECV ) return ASRT_SUCCESS;
                 ++static_cast< recv_capture* >( ptr )->call_cnt;
                 return ASRT_SUCCESS;
         };
@@ -1700,7 +1701,7 @@ static bool run_coro( CoroFactory&& factory )
 
         bool done = false;
         auto op   = ( factory( tctx, loop, arena, clk, client ) | asrtio::complete_arena( arena ) )
-                        .connect( test_receiver{ &done, &idle } );
+                      .connect( test_receiver{ &done, &idle } );
         op.start();
 
         uv_run( loop, UV_RUN_DEFAULT );
@@ -1750,8 +1751,8 @@ TEST_CASE( "suite_output_files" )
 
         bool done = false;
         auto op   = ( suite_output_coro( tctx, loop, arena, clk, reporter, sfs, client ) |
-                      asrtio::complete_arena( arena ) )
-                        .connect( test_receiver{ &done, &idle } );
+                    asrtio::complete_arena( arena ) )
+                      .connect( test_receiver{ &done, &idle } );
         op.start();
 
         uv_run( loop, UV_RUN_DEFAULT );
@@ -1841,13 +1842,13 @@ TEST_CASE( "write_stream_csv: single u8 field" )
         uint8_t                data[]   = { 42 };
         asrt_stream_record     rec      = { .next = nullptr, .data = data };
         asrt_stream_schema     sc       = {
-            .schema_id   = 0,
-            .field_count = 1,
-            .record_size = 1,
-            .fields      = fields,
-            .first       = &rec,
-            .last        = &rec,
-            .count       = 1,
+                      .schema_id   = 0,
+                      .field_count = 1,
+                      .record_size = 1,
+                      .fields      = fields,
+                      .first       = &rec,
+                      .last        = &rec,
+                      .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "out/stream.0.csv", sc );
@@ -1871,13 +1872,13 @@ TEST_CASE( "write_stream_csv: multi-field u32,i8" )
 
         asrt_stream_record rec = { .next = nullptr, .data = data };
         asrt_stream_schema sc  = {
-            .schema_id   = 5,
-            .field_count = 2,
-            .record_size = 5,
-            .fields      = fields,
-            .first       = &rec,
-            .last        = &rec,
-            .count       = 1,
+             .schema_id   = 5,
+             .field_count = 2,
+             .record_size = 5,
+             .fields      = fields,
+             .first       = &rec,
+             .last        = &rec,
+             .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "out/stream.5.csv", sc );
@@ -1901,13 +1902,13 @@ TEST_CASE( "write_stream_csv: multiple records" )
         asrt_stream_record rec2 = { .next = nullptr, .data = data2 };
         asrt_stream_record rec1 = { .next = &rec2, .data = data1 };
         asrt_stream_schema sc   = {
-            .schema_id   = 0,
-            .field_count = 1,
-            .record_size = 2,
-            .fields      = fields,
-            .first       = &rec1,
-            .last        = &rec2,
-            .count       = 2,
+              .schema_id   = 0,
+              .field_count = 1,
+              .record_size = 2,
+              .fields      = fields,
+              .first       = &rec1,
+              .last        = &rec2,
+              .count       = 2,
         };
 
         asrtio::write_stream_csv( fs, "s.csv", sc );
@@ -1922,13 +1923,13 @@ TEST_CASE( "write_stream_csv: empty schema (no records)" )
 
         asrt_stream_field_desc fields[] = { { ASRT_STRM_FIELD_BOOL, 0, nullptr } };
         asrt_stream_schema     sc       = {
-            .schema_id   = 0,
-            .field_count = 1,
-            .record_size = 1,
-            .fields      = fields,
-            .first       = nullptr,
-            .last        = nullptr,
-            .count       = 0,
+                      .schema_id   = 0,
+                      .field_count = 1,
+                      .record_size = 1,
+                      .fields      = fields,
+                      .first       = nullptr,
+                      .last        = nullptr,
+                      .count       = 0,
         };
 
         asrtio::write_stream_csv( fs, "empty.csv", sc );
@@ -1951,13 +1952,13 @@ TEST_CASE( "write_stream_csv: float field" )
 
         asrt_stream_record rec = { .next = nullptr, .data = data };
         asrt_stream_schema sc  = {
-            .schema_id   = 0,
-            .field_count = 1,
-            .record_size = 4,
-            .fields      = fields,
-            .first       = &rec,
-            .last        = &rec,
-            .count       = 1,
+             .schema_id   = 0,
+             .field_count = 1,
+             .record_size = 4,
+             .fields      = fields,
+             .first       = &rec,
+             .last        = &rec,
+             .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "f.csv", sc );
