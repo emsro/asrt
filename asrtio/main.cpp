@@ -10,323 +10,50 @@
 /// OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 /// PERFORMANCE OF THIS SOFTWARE.
 #include "../asrtl/log.h"
-#include "../asrtl/stream_proto.h"
-#include "../asrtlpp/fmt.hpp"
-#include "./cntr_stream_sys.hpp"
-#include "./euv.hpp"
-#include "./output_fs.hpp"
-#include "./pbar.hpp"
+#include "./final_receiver.hpp"
+#include "./log_sink.hpp"
 #include "./real_fs.hpp"
-#include "./rsim.hpp"
-#include "./util.hpp"
+#include "./run_session.hpp"
 
 #include <CLI/CLI.hpp>
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
-#include <list>
 #include <memory>
 #include <sstream>
-#include <uv.h>
-#include <vector>
 
 using namespace std::literals::chrono_literals;
 
 namespace asrtio
 {
-using cntr_tcp_sys    = cntr_stream_sys< tcp_transport >;
-using cntr_serial_sys = cntr_stream_sys< serial_transport >;
 using asrt::opt;
 namespace
 {
-struct pbar_reporter : reporter_base
-{
-        pbar::terminal_progress& bar;
-        int                      done   = 0;
-        int                      failed = 0;
-
-        explicit pbar_reporter( task_ctx& ctx, pbar::terminal_progress& b )
-          : reporter_base( ctx )
-          , bar( b )
-        {
-        }
-
-        task< void > on_count( uint32_t total ) override
-        {
-                bar.set_total( (int) total );
-                co_return;
-        }
-
-        task< void > on_test_start( std::string_view name, uint32_t run_idx, uint32_t run_total )
-            override
-        {
-                auto label = std::string{ name };
-                if ( run_total > 1 )
-                        label +=
-                            " " + std::to_string( run_idx ) + "/" + std::to_string( run_total );
-                bar.set_status( label );
-                co_return;
-        }
-
-        task< void > on_test_done(
-            std::string_view name,
-            bool             passed,
-            double           duration_ms,
-            uint32_t         run_idx,
-            uint32_t         run_total ) override
-        {
-                if ( !passed )
-                        ++failed;
-                auto label = std::string{ name };
-                if ( run_total > 1 )
-                        label +=
-                            " " + std::to_string( run_idx ) + "/" + std::to_string( run_total );
-                bar.log_result( label, passed, duration_ms );
-                bar.set_progress( ++done, failed );
-                co_return;
-        }
-
-        task< void > on_diagnostic( std::string_view file, uint32_t line, std::string_view extra )
-            override
-        {
-                auto loc = std::string{ file } + ":" + std::to_string( line );
-                if ( !extra.empty() )
-                        loc += " " + std::string{ extra };
-                bar.log( pbar::colored_wall_time() + "    " + pbar::fg( loc, pbar::colors::red ) );
-                co_return;
-        }
-
-        task< void > on_collect_data( std::string_view, asrt_flat_tree const* ) override
-        {
-                co_return;
-        }
-
-        task< void > on_stream_data( std::string_view, asrt::stream_schemas const& ) override
-        {
-                co_return;
-        }
-};
-
-std::shared_ptr< pbar::terminal_progress > g_bar;
-asrt_log_level                             g_log_level = ASRT_LOG_ERROR;
-std::ostream*                              g_log_file  = nullptr;
-
-std::string plain_log_line(
-    enum asrt_log_level level,
-    char const*         module,
-    char const*         fmt,
-    va_list             args )
-{
-        char msgbuf[1024];
-        vsnprintf( msgbuf, sizeof( msgbuf ), fmt, args );
-        char const* ls;
-        if ( level == ASRT_LOG_ERROR )
-                ls = "ERROR";
-        else if ( level == ASRT_LOG_INFO )
-                ls = "INFO ";
-        else
-                ls = "DEBUG";
-        auto now   = std::chrono::system_clock::now();
-        auto now_t = std::chrono::system_clock::to_time_t( now );
-        auto us =
-            std::chrono::duration_cast< std::chrono::microseconds >( now.time_since_epoch() ) %
-            std::chrono::seconds( 1 );
-        struct tm ti
-        {
-        };
-        localtime_r( &now_t, &ti );
-        char ts[16];
-        std::snprintf(
-            ts,
-            sizeof( ts ),
-            "%02d%02d%02d.%06d",
-            ti.tm_hour,
-            ti.tm_min,
-            ti.tm_sec,
-            static_cast< int >( us.count() ) );
-        return std::string( ts ) + "  " + ( module ? module : "-" ) + "  " + ls + "  " + msgbuf;
-}
-
-std::string pbar_format_log(
-    enum asrt_log_level level,
-    char const*         module,
-    char const*         fmt,
-    va_list             args )
-{
-        char msgbuf[1024];
-        vsnprintf( msgbuf, sizeof( msgbuf ), fmt, args );
-        pbar::color lc;
-        char const* ls;
-        if ( level == ASRT_LOG_ERROR ) {
-                lc = pbar::colors::red;
-                ls = "ERROR";
-        } else if ( level == ASRT_LOG_INFO ) {
-                lc = pbar::colors::green;
-                ls = "INFO ";
-        } else {
-                lc = pbar::colors::dim_gray;
-                ls = "DEBUG";
-        }
-        return pbar::colored_wall_time() + "  " + pbar::dim( module ? module : "-" ) + "  " +
-               pbar::fg( ls, lc ) + "  " + msgbuf;
-}
+pbar::terminal_progress  g_bar;
+pbar::terminal_progress* g_active_bar = nullptr;
+asrt_log_level           g_log_level  = ASRT_LOG_ERROR;
+std::ostream*            g_log_file   = nullptr;
 }  // namespace
 
 extern "C" {
 void asrt_log( enum asrt_log_level level, char const* module, char const* fmt, ... )
 {
-        if ( g_log_file ) {
-                va_list fargs;
-                va_start( fargs, fmt );
-                auto fline = plain_log_line( level, module, fmt, fargs );
-                va_end( fargs );
-                *g_log_file << fline << '\n';
-        }
-        if ( level < g_log_level )
-                return;
         va_list args;
         va_start( args, fmt );
-        auto line = pbar_format_log( level, module, fmt, args );
+        log_sink_write( level, g_log_level, module, fmt, args, g_log_file, g_active_bar );
         va_end( args );
-        if ( g_bar )
-                g_bar->log( line );
-        else
-                std::printf( "%s\n", line.c_str() );
 }
 }
 
 namespace
 {
 
-task< void > run_tcp(
-    task_ctx&                       ctx,
-    arena&                          arena,
-    steady_clock&                   clk,
-    uv_loop_t*                      loop,
-    char const*                     host,
-    uint16_t                        port,
-    std::chrono::milliseconds       timeout,
-    std::unique_ptr< param_config > params,
-    output_fs&                      fs,
-    std::filesystem::path           output_dir )
-{
-        pbar_reporter reporter{ ctx, *g_bar };
-        auto          client = std::make_shared< uv_tcp_t >();
-        if ( auto r = uv_tcp_init( loop, client.get() ); r != 0 ) {
-                ASRT_ERR_LOG( "asrtio", "uv_tcp_init failed: %s", uv_strerror( r ) );
-                co_await ecor::just_error( ASRT_INIT_ERR );
-        }
-        co_await tcp_connect{ { client.get(), host, port } };
-        auto sys = arena.make< cntr_tcp_sys >( tcp_transport{ client }, clk );
-        sys->start();
-
-        co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
-        g_bar->finish();
-        g_bar.reset();
-};
-
-task< void > run_rsim(
-    task_ctx&                       ctx,
-    arena&                          arena,
-    steady_clock&                   clk,
-    uv_loop_t*                      loop,
-    uint32_t                        seed,
-    std::chrono::milliseconds       timeout,
-    std::unique_ptr< param_config > params,
-    output_fs&                      fs,
-    std::filesystem::path           output_dir )
-{
-        pbar_reporter reporter{ ctx, *g_bar };
-        auto          rs = arena.make< rsim_ctx >( loop, seed );
-        rs->start();
-
-        auto client = std::make_shared< uv_tcp_t >();
-        if ( auto r = uv_tcp_init( loop, client.get() ); r != 0 ) {
-                ASRT_ERR_LOG( "asrtio", "uv_tcp_init failed: %s", uv_strerror( r ) );
-                co_await ecor::just_error( ASRT_INIT_ERR );
-        }
-        co_await tcp_connect{ { client.get(), "0.0.0.0", rs->port() } };
-        auto sys = arena.make< cntr_tcp_sys >( tcp_transport{ client }, clk );
-        sys->start();
-
-        co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
-        ASRT_INF_LOG( "asrtio", "run test suite finished" );
-        g_bar->finish();
-        g_bar.reset();
-}
-
 struct tcp_opts
 {
         std::string host;
-        uint16_t    port;
+        uint16_t    port = 0;
 };
 
-task< void > run_serial(
-    task_ctx&                       ctx,
-    arena&                          arena,
-    steady_clock&                   clk,
-    uv_loop_t*                      loop,
-    serial_config                   cfg,
-    std::chrono::milliseconds       timeout,
-    std::unique_ptr< param_config > params,
-    output_fs&                      fs,
-    std::filesystem::path           output_dir )
-{
-        pbar_reporter reporter{ ctx, *g_bar };
-        std::string   errmsg;
-        auto          transport = serial_transport::open( loop, cfg, errmsg );
-        if ( !transport ) {
-                ASRT_ERR_LOG( "asrtio", "Failed to open serial port: %s", errmsg.c_str() );
-                co_await ecor::just_error( ASRT_INIT_ERR );
-                co_return;
-        }
-        auto sys = arena.make< cntr_serial_sys >( std::move( *transport ), clk );
-        sys->start();
-
-        co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
-        g_bar->finish();
-        g_bar.reset();
-}
-
-struct final_receiver
-{
-        using receiver_concept = ecor::receiver_t;
-        uv_idle_t* idle        = nullptr;
-
-        void set_value()
-        {
-                ASRT_INF_LOG( "asrtio_main", "Task completed successfully" );
-                stop_idle();
-        }
-
-        void set_error( ecor::task_error )
-        {
-                ASRT_ERR_LOG( "asrtio_main", "Task error" );
-                stop_idle();
-        }
-
-        void set_error( asrt::status s )
-        {
-                ASRT_ERR_LOG( "asrtio_main", "Task error: %s", asrt_status_to_str( s ) );
-                stop_idle();
-        }
-
-        void set_stopped()
-        {
-                ASRT_INF_LOG( "asrtio_main", "Task stopped" );
-                stop_idle();
-        }
-
-        void stop_idle()
-        {
-                if ( idle ) {
-                        uv_idle_stop( idle );
-                        uv_close( (uv_handle_t*) idle, nullptr );
-                        idle = nullptr;
-                }
-        }
-};
 }  // namespace
 }  // namespace asrtio
 
@@ -376,13 +103,16 @@ int main( int argc, char* argv[] )
                                 std::exit( 1 );
                         }
                 }
-                g_bar = std::make_shared< pbar::terminal_progress >();
                 // Construct in-place to avoid move-constructing op<R>, which
                 // derives from ecor::schedulable->ll_base<schedulable>. The
                 // ll_base move ctor calls derived() (CRTP downcast) on the
                 // partially-constructed target before its vptr is set, causing
                 // a UBSan -fsanitize=vptr crash.
-                t.emplace( ar, make_task( timeout, std::move( params ) ), final_receiver{ &idle } );
+                t.emplace(
+                    ar,
+                    make_task( timeout, std::move( params ) ),
+                    final_receiver{ &idle, &g_active_bar } );
+                g_active_bar = &g_bar;
         };
 
         sub->callback( [&, opt] {
@@ -397,7 +127,8 @@ int main( int argc, char* argv[] )
                             timeout,
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
-                            output_dir );
+                            output_dir,
+                            g_bar );
                 } );
         } );
 
@@ -424,7 +155,8 @@ int main( int argc, char* argv[] )
                             timeout,
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
-                            output_dir );
+                            output_dir,
+                            g_bar );
                 } );
         } );
 
@@ -465,7 +197,8 @@ int main( int argc, char* argv[] )
                             timeout,
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
-                            output_dir );
+                            output_dir,
+                            g_bar );
                 } );
         } );
 
