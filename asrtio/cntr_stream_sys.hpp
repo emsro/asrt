@@ -155,26 +155,41 @@ inline task< void > async_destroy( task_ctx&, cntr_stream_sys< T >& sys )
 
 struct suite_reporter
 {
-        virtual void on_count( uint32_t total ) = 0;
-        virtual void on_test_start(
+        virtual task< void > on_count( uint32_t total ) = 0;
+        virtual task< void > on_test_start(
             std::string_view name,
             uint32_t         run_idx,
             uint32_t         run_total ) = 0;
-        virtual void on_test_done(
+        virtual task< void > on_test_done(
             std::string_view name,
             bool             passed,
             double           duration_ms,
             uint32_t         run_idx,
             uint32_t         run_total ) = 0;
-        virtual void on_diagnostic(
+        virtual task< void > on_diagnostic(
             std::string_view file,
             uint32_t         line,
-            std::string_view extra )                                                      = 0;
-        virtual void on_collect_data( std::string_view name, asrt_flat_tree const* tree ) = 0;
-        virtual void on_stream_data(
+            std::string_view extra )                                                              = 0;
+        virtual task< void > on_collect_data(
+            std::string_view name, asrt_flat_tree const* tree )                               = 0;
+        virtual task< void > on_stream_data(
             std::string_view            name,
-            asrt::stream_schemas const& schemas ) = 0;
+            asrt::stream_schemas const& schemas )                                              = 0;
         virtual ~suite_reporter()                 = default;
+};
+
+struct reporter_base : suite_reporter
+{
+        explicit reporter_base( task_ctx& ctx )
+          : _ctx( ctx )
+        {
+        }
+
+        auto& query( ecor::get_memory_resource_t tag ) { return _ctx.query( tag ); }
+        auto& query( ecor::get_task_core_t tag ) { return _ctx.query( tag ); }
+
+protected:
+        task_ctx& _ctx;
 };
 
 struct _cntr_assembly_exec_test
@@ -231,7 +246,8 @@ void write_stream_csv(
     std::filesystem::path const& path,
     asrt_stream_schema const&    sc );
 
-void handle_stream(
+task< void > handle_stream(
+    task_ctx&                    ctx,
     asrt::stream_schemas         schemas,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -239,7 +255,8 @@ void handle_stream(
     std::filesystem::path const& run_dir,
     bool                         do_output );
 
-void handle_collect(
+task< void > handle_collect(
+    task_ctx&                    ctx,
     asrt_flat_tree const*        tree,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -247,7 +264,8 @@ void handle_collect(
     std::filesystem::path const& path,
     bool                         do_output );
 
-void handle_diag(
+task< void > handle_diag(
+    task_ctx&                    ctx,
     cntr_sys&                    sys,
     suite_reporter&              reporter,
     output_fs&                   fs,

@@ -60,15 +60,9 @@ static std::vector< uint8_t > make_cobs_packet( uint16_t chid, std::vector< uint
                 *pp++ = b;
         size_t raw_len = pp - raw;
 
-        uint8_t out[1024];
-        struct asrt_rec_span in_sp
-        {
-                .b = raw, .e = raw + raw_len, .next = nullptr
-        };
-        struct asrt_span out_sp
-        {
-                .b = out, .e = out + sizeof( out )
-        };
+        uint8_t              out[1024];
+        struct asrt_rec_span in_sp{ .b = raw, .e = raw + raw_len, .next = nullptr };
+        struct asrt_span     out_sp{ .b = out, .e = out + sizeof( out ) };
         REQUIRE( asrt_cobs_encode_buffer( &in_sp, &out_sp ) == ASRT_SUCCESS );
 
         std::vector< uint8_t > result( out_sp.b, out_sp.e );
@@ -84,7 +78,7 @@ static asrtio::cobs_node make_cobs_node( asrt_node* node, std::function< void( s
         cn.on_error = std::move( on_err );
         asrt_cobs_ibuffer_init(
             &cn.recv,
-            ( struct asrt_span ){ .b = cn.ibuffer, .e = cn.ibuffer + sizeof( cn.ibuffer ) } );
+            (struct asrt_span) { .b = cn.ibuffer, .e = cn.ibuffer + sizeof( cn.ibuffer ) } );
         return cn;
 }
 
@@ -101,10 +95,12 @@ TEST_CASE( "cobs_on_data_dispatch" )
         asrt_node test_node{};
         test_node.chid     = ASRT_CORE;
         test_node.e_cb_ptr = &cap;
-        test_node.e_cb = []( void* ptr, enum asrt_event_e event, void* arg ) -> enum asrt_status {
-                if ( event != ASRT_EVENT_RECV ) return ASRT_SUCCESS;
+        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* arg )->enum asrt_status
+        {
+                if ( event != ASRT_EVENT_RECV )
+                        return ASRT_SUCCESS;
                 struct asrt_span sp = *static_cast< struct asrt_span* >( arg );
-                auto& c             = *static_cast< recv_capture* >( ptr );
+                auto&            c  = *static_cast< recv_capture* >( ptr );
                 c.payload.assign( sp.b, sp.e );
                 ++c.call_cnt;
                 return ASRT_SUCCESS;
@@ -129,7 +125,8 @@ TEST_CASE( "cobs_on_data_error_cb" )
 {
         asrt_node dummy_node{};
         dummy_node.chid = ASRT_CORE;
-        dummy_node.e_cb = []( void*, enum asrt_event_e, void* ) -> enum asrt_status {
+        dummy_node.e_cb = []( void*, enum asrt_event_e, void* )->enum asrt_status
+        {
                 return ASRT_SUCCESS;
         };
 
@@ -155,8 +152,10 @@ TEST_CASE( "cobs_on_data_multi_packet" )
         asrt_node test_node{};
         test_node.chid     = ASRT_CORE;
         test_node.e_cb_ptr = &cap;
-        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* ) -> enum asrt_status {
-                if ( event != ASRT_EVENT_RECV ) return ASRT_SUCCESS;
+        test_node.e_cb     = []( void* ptr, enum asrt_event_e event, void* )->enum asrt_status
+        {
+                if ( event != ASRT_EVENT_RECV )
+                        return ASRT_SUCCESS;
                 ++static_cast< recv_capture* >( ptr )->call_cnt;
                 return ASRT_SUCCESS;
         };
@@ -185,7 +184,7 @@ TEST_CASE( "cobs_on_data_multi_packet" )
 namespace
 {
 
-struct recording_reporter : asrtio::suite_reporter
+struct recording_reporter : asrtio::reporter_base
 {
         uint32_t                   count = 0;
         std::vector< std::string > starts;
@@ -198,25 +197,50 @@ struct recording_reporter : asrtio::suite_reporter
         std::vector< uint32_t >    done_run_total;
         int                        done_names_at_on_done = -1;
 
-        void on_count( uint32_t n ) override { count = n; }
-        void on_test_start( std::string_view n, uint32_t ri, uint32_t rt ) override
+        explicit recording_reporter( asrtio::task_ctx& ctx )
+          : reporter_base( ctx )
+        {
+        }
+
+        asrtio::task< void > on_count( uint32_t n ) override
+        {
+                count = n;
+                co_return;
+        }
+        asrtio::task< void > on_test_start( std::string_view n, uint32_t ri, uint32_t rt ) override
         {
                 starts.emplace_back( n );
                 start_run_idx.push_back( ri );
                 start_run_total.push_back( rt );
+                co_return;
         }
-        void on_test_done( std::string_view n, bool p, double ms, uint32_t ri, uint32_t rt )
-            override
+        asrtio::task< void > on_test_done(
+            std::string_view n,
+            bool             p,
+            double           ms,
+            uint32_t         ri,
+            uint32_t         rt ) override
         {
                 done_names.emplace_back( n );
                 passed.push_back( p );
                 durations_ms.push_back( ms );
                 done_run_idx.push_back( ri );
                 done_run_total.push_back( rt );
+                co_return;
         }
-        void on_diagnostic( std::string_view, uint32_t, std::string_view ) override {}
-        void on_collect_data( std::string_view, asrt_flat_tree const* ) override {}
-        void on_stream_data( std::string_view, asrt::stream_schemas const& ) override {}
+        asrtio::task< void > on_diagnostic( std::string_view, uint32_t, std::string_view ) override
+        {
+                co_return;
+        }
+        asrtio::task< void > on_collect_data( std::string_view, asrt_flat_tree const* ) override
+        {
+                co_return;
+        }
+        asrtio::task< void > on_stream_data( std::string_view, asrt::stream_schemas const& )
+            override
+        {
+                co_return;
+        }
 };
 
 }  // namespace
@@ -306,16 +330,16 @@ namespace
 
 struct suite_run
 {
-        recording_reporter reporter;
-        bool               done = false;
+        bool                              done = false;
+        asrt::malloc_free_memory_resource mem_res;
+        asrtio::task_ctx                  tctx{ mem_res };
+        recording_reporter                reporter{ tctx };
 
         suite_run( uint32_t seed = 42 )
         {
-                uv_loop_t*                        loop = uv_loop_new();
-                asrt::malloc_free_memory_resource mem_res;
-                asrtio::task_ctx                  tctx{ mem_res };
-                asrtio::arena                     arena{ tctx, mem_res };
-                asrtio::steady_clock              clk;
+                uv_loop_t*           loop = uv_loop_new();
+                asrtio::arena        arena{ tctx, mem_res };
+                asrtio::steady_clock clk;
 
                 auto client = std::make_shared< uv_tcp_t >();
                 uv_tcp_init( loop, client.get() );
@@ -539,13 +563,13 @@ TEST_CASE( "param_tcp_e2e" )
             &params.tree, 1, 3, "y", ASRT_FLAT_STYPE_STR, { .str_val = "hello" } );
         params.wildcard = { 1 };
 
-        param_e2e_state    state;
-        recording_reporter reporter;
-        bool               done = false;
+        param_e2e_state state;
 
         uv_loop_t*                        loop = uv_loop_new();
         asrt::malloc_free_memory_resource mem_res;
         asrtio::task_ctx                  tctx{ mem_res };
+        recording_reporter                reporter{ tctx };
+        bool                              done = false;
         asrtio::arena                     arena{ tctx, mem_res };
         asrtio::steady_clock              clk;
 
@@ -1514,16 +1538,16 @@ namespace
 
 struct param_suite_run
 {
-        recording_reporter reporter;
-        bool               done = false;
+        bool                              done = false;
+        asrt::malloc_free_memory_resource mem_res;
+        asrtio::task_ctx                  tctx{ mem_res };
+        recording_reporter                reporter{ tctx };
 
         param_suite_run( asrtio::param_config& params, uint32_t seed = 42 )
         {
-                uv_loop_t*                        loop = uv_loop_new();
-                asrt::malloc_free_memory_resource mem_res;
-                asrtio::task_ctx                  tctx{ mem_res };
-                asrtio::arena                     arena{ tctx, mem_res };
-                asrtio::steady_clock              clk;
+                uv_loop_t*           loop = uv_loop_new();
+                asrtio::arena        arena{ tctx, mem_res };
+                asrtio::steady_clock clk;
 
                 auto client = std::make_shared< uv_tcp_t >();
                 uv_tcp_init( loop, client.get() );
@@ -1676,7 +1700,7 @@ static bool run_coro( CoroFactory&& factory )
 
         bool done = false;
         auto op   = ( factory( tctx, loop, arena, clk, client ) | asrtio::complete_arena( arena ) )
-                      .connect( test_receiver{ &done, &idle } );
+                        .connect( test_receiver{ &done, &idle } );
         op.start();
 
         uv_run( loop, UV_RUN_DEFAULT );
@@ -1705,16 +1729,33 @@ static asrtio::task< void > suite_output_coro(
 
 TEST_CASE( "suite_output_files" )
 {
-        recording_reporter reporter;
-        stub_fs            sfs;
+        uv_loop_t*                        loop = uv_loop_new();
+        asrt::malloc_free_memory_resource mem_res;
+        asrtio::task_ctx                  tctx{ mem_res };
+        recording_reporter                reporter{ tctx };
+        stub_fs                           sfs;
 
-        bool done = run_coro( [&]( asrtio::task_ctx&           tctx,
-                                   uv_loop_t*                  loop,
-                                   asrtio::arena&              arena,
-                                   asrtio::clock&              clk,
-                                   std::shared_ptr< uv_tcp_t > client ) {
-                return suite_output_coro( tctx, loop, arena, clk, reporter, sfs, client );
+        asrtio::arena        arena{ tctx, mem_res };
+        asrtio::steady_clock clk;
+
+        auto client = std::make_shared< uv_tcp_t >();
+        uv_tcp_init( loop, client.get() );
+
+        uv_idle_t idle;
+        idle.data = &tctx;
+        uv_idle_init( loop, &idle );
+        uv_idle_start( &idle, []( uv_idle_t* h ) {
+                static_cast< asrtio::task_ctx* >( h->data )->tick();
         } );
+
+        bool done = false;
+        auto op   = ( suite_output_coro( tctx, loop, arena, clk, reporter, sfs, client ) |
+                      asrtio::complete_arena( arena ) )
+                        .connect( test_receiver{ &done, &idle } );
+        op.start();
+
+        uv_run( loop, UV_RUN_DEFAULT );
+        drain_loop( loop );
 
         REQUIRE( done );
 
@@ -1800,13 +1841,13 @@ TEST_CASE( "write_stream_csv: single u8 field" )
         uint8_t                data[]   = { 42 };
         asrt_stream_record     rec      = { .next = nullptr, .data = data };
         asrt_stream_schema     sc       = {
-                      .schema_id   = 0,
-                      .field_count = 1,
-                      .record_size = 1,
-                      .fields      = fields,
-                      .first       = &rec,
-                      .last        = &rec,
-                      .count       = 1,
+            .schema_id   = 0,
+            .field_count = 1,
+            .record_size = 1,
+            .fields      = fields,
+            .first       = &rec,
+            .last        = &rec,
+            .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "out/stream.0.csv", sc );
@@ -1830,13 +1871,13 @@ TEST_CASE( "write_stream_csv: multi-field u32,i8" )
 
         asrt_stream_record rec = { .next = nullptr, .data = data };
         asrt_stream_schema sc  = {
-             .schema_id   = 5,
-             .field_count = 2,
-             .record_size = 5,
-             .fields      = fields,
-             .first       = &rec,
-             .last        = &rec,
-             .count       = 1,
+            .schema_id   = 5,
+            .field_count = 2,
+            .record_size = 5,
+            .fields      = fields,
+            .first       = &rec,
+            .last        = &rec,
+            .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "out/stream.5.csv", sc );
@@ -1860,13 +1901,13 @@ TEST_CASE( "write_stream_csv: multiple records" )
         asrt_stream_record rec2 = { .next = nullptr, .data = data2 };
         asrt_stream_record rec1 = { .next = &rec2, .data = data1 };
         asrt_stream_schema sc   = {
-              .schema_id   = 0,
-              .field_count = 1,
-              .record_size = 2,
-              .fields      = fields,
-              .first       = &rec1,
-              .last        = &rec2,
-              .count       = 2,
+            .schema_id   = 0,
+            .field_count = 1,
+            .record_size = 2,
+            .fields      = fields,
+            .first       = &rec1,
+            .last        = &rec2,
+            .count       = 2,
         };
 
         asrtio::write_stream_csv( fs, "s.csv", sc );
@@ -1881,13 +1922,13 @@ TEST_CASE( "write_stream_csv: empty schema (no records)" )
 
         asrt_stream_field_desc fields[] = { { ASRT_STRM_FIELD_BOOL, 0, nullptr } };
         asrt_stream_schema     sc       = {
-                      .schema_id   = 0,
-                      .field_count = 1,
-                      .record_size = 1,
-                      .fields      = fields,
-                      .first       = nullptr,
-                      .last        = nullptr,
-                      .count       = 0,
+            .schema_id   = 0,
+            .field_count = 1,
+            .record_size = 1,
+            .fields      = fields,
+            .first       = nullptr,
+            .last        = nullptr,
+            .count       = 0,
         };
 
         asrtio::write_stream_csv( fs, "empty.csv", sc );
@@ -1910,13 +1951,13 @@ TEST_CASE( "write_stream_csv: float field" )
 
         asrt_stream_record rec = { .next = nullptr, .data = data };
         asrt_stream_schema sc  = {
-             .schema_id   = 0,
-             .field_count = 1,
-             .record_size = 4,
-             .fields      = fields,
-             .first       = &rec,
-             .last        = &rec,
-             .count       = 1,
+            .schema_id   = 0,
+            .field_count = 1,
+            .record_size = 4,
+            .fields      = fields,
+            .first       = &rec,
+            .last        = &rec,
+            .count       = 1,
         };
 
         asrtio::write_stream_csv( fs, "f.csv", sc );
@@ -2144,7 +2185,7 @@ TEST_CASE( "suite_serial_pty" )
         asrtio::arena                     arena{ tctx, mem_res };
         asrtio::steady_clock              clk;
 
-        recording_reporter reporter;
+        recording_reporter reporter{ tctx };
         bool               done = false;
 
         uv_idle_t idle;

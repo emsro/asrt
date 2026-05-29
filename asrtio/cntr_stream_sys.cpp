@@ -102,7 +102,8 @@ void write_stream_csv(
         }
 }
 
-void handle_stream(
+task< void > handle_stream(
+    task_ctx&                    ctx,
     asrt::stream_schemas         schemas,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -111,10 +112,10 @@ void handle_stream(
     bool                         do_output )
 {
         if ( schemas->schema_count == 0 )
-                return;
-        reporter.on_stream_data( name, schemas );
+                co_return;
+        co_await reporter.on_stream_data( name, schemas );
         if ( !do_output )
-                return;
+                co_return;
         auto const& ss = *schemas;
         for ( uint32_t si = 0; si < ss.schema_count; ++si ) {
                 auto const& sc = ss.schemas[si];
@@ -123,7 +124,8 @@ void handle_stream(
         }
 }
 
-void handle_collect(
+task< void > handle_collect(
+    task_ctx&                    ctx,
     asrt_flat_tree const*        tree,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -132,10 +134,10 @@ void handle_collect(
     bool                         do_output )
 {
         if ( !tree )
-                return;
-        reporter.on_collect_data( name, tree );
+                co_return;
+        co_await reporter.on_collect_data( name, tree );
         if ( !do_output )
-                return;
+                co_return;
         nlohmann::json j;
         if ( flat_tree_to_json( const_cast< asrt_flat_tree& >( *tree ), j ) ) {
                 auto w = fs.open_write( path );
@@ -143,7 +145,8 @@ void handle_collect(
         }
 }
 
-void handle_diag(
+task< void > handle_diag(
+    task_ctx&                    ctx,
     cntr_sys&                    sys,
     suite_reporter&              reporter,
     output_fs&                   fs,
@@ -157,7 +160,7 @@ void handle_diag(
         }
         while ( auto* rec = sys.take_diag_record() ) {
                 char const* extra = rec->extra ? rec->extra : "";
-                reporter.on_diagnostic( rec->file, rec->line, extra );
+                co_await reporter.on_diagnostic( rec->file, rec->line, extra );
                 if ( w )
                         w->stream() << rec->file << "," << rec->line << "," << extra << "\n";
                 asrt_diag_free_record( &sys.assembly().diag.alloc, rec );
@@ -176,7 +179,7 @@ task< void > run_test_suite(
         co_await cntr_start{ { sys.cntr(), timeout } };
 
         uint32_t count = co_await cntr_query_test_count{ { sys.cntr(), timeout } };
-        reporter.on_count( count );
+        co_await reporter.on_count( count );
 
         std::set< std::string > unseen_keys;
         for ( auto const& [key, _] : params.tests )
@@ -202,7 +205,7 @@ task< void > run_test_suite(
                 uint32_t const run_total = static_cast< uint32_t >( roots.size() );
 
                 for ( uint32_t ri = 0; ri < run_total; ++ri ) {
-                        reporter.on_test_start( name, ri + 1, run_total );
+                        co_await reporter.on_test_start( name, ri + 1, run_total );
 
                         auto         t0  = sys.clk().now();
                         asrt::result res = co_await cntr_assembly_exec_test{
@@ -217,19 +220,20 @@ task< void > run_test_suite(
 
                         if ( do_output )
                                 fs.create_directories( run_dir );
-                        handle_diag( sys, reporter, fs, run_dir / "diag.csv", do_output );
-                        handle_collect(
+                        co_await handle_diag( ctx, sys, reporter, fs, run_dir / "diag.csv", do_output );
+                        co_await handle_collect(
+                            ctx,
                             sys.collect_tree(),
                             reporter,
                             name,
                             fs,
                             run_dir / "collect.json",
                             do_output );
-                        handle_stream( sys.stream_take(), reporter, name, fs, run_dir, do_output );
+                        co_await handle_stream( ctx, sys.stream_take(), reporter, name, fs, run_dir, do_output );
 
                         double ms     = static_cast< double >( ( sys.clk().now() - t0 ).count() );
                         bool   passed = ( res.res == ASRT_TEST_RESULT_SUCCESS );
-                        reporter.on_test_done( name, passed, ms, ri + 1, run_total );
+                        co_await reporter.on_test_done( name, passed, ms, ri + 1, run_total );
                 }
         }
 

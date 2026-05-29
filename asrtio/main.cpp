@@ -40,29 +40,38 @@ using cntr_serial_sys = cntr_stream_sys< serial_transport >;
 using asrt::opt;
 namespace
 {
-struct pbar_reporter : suite_reporter
+struct pbar_reporter : reporter_base
 {
         pbar::terminal_progress& bar;
         int                      done   = 0;
         int                      failed = 0;
 
-        explicit pbar_reporter( pbar::terminal_progress& b )
-          : bar( b )
+        explicit pbar_reporter( task_ctx& ctx, pbar::terminal_progress& b )
+          : reporter_base( ctx )
+          , bar( b )
         {
         }
 
-        void on_count( uint32_t total ) override { bar.set_total( (int) total ); }
+        task< void > on_count( uint32_t total ) override
+        {
+                bar.set_total( (int) total );
+                co_return;
+        }
 
-        void on_test_start( std::string_view name, uint32_t run_idx, uint32_t run_total ) override
+        task< void > on_test_start(
+            std::string_view name,
+            uint32_t         run_idx,
+            uint32_t         run_total ) override
         {
                 auto label = std::string{ name };
                 if ( run_total > 1 )
                         label +=
                             " " + std::to_string( run_idx ) + "/" + std::to_string( run_total );
                 bar.set_status( label );
+                co_return;
         }
 
-        void on_test_done(
+        task< void > on_test_done(
             std::string_view name,
             bool             passed,
             double           duration_ms,
@@ -77,19 +86,27 @@ struct pbar_reporter : suite_reporter
                             " " + std::to_string( run_idx ) + "/" + std::to_string( run_total );
                 bar.log_result( label, passed, duration_ms );
                 bar.set_progress( ++done, failed );
+                co_return;
         }
 
-        void on_diagnostic( std::string_view file, uint32_t line, std::string_view extra ) override
+        task< void > on_diagnostic( std::string_view file, uint32_t line, std::string_view extra ) override
         {
                 auto loc = std::string{ file } + ":" + std::to_string( line );
                 if ( !extra.empty() )
                         loc += " " + std::string{ extra };
                 bar.log( pbar::colored_wall_time() + "    " + pbar::fg( loc, pbar::colors::red ) );
+                co_return;
         }
 
-        void on_collect_data( std::string_view, asrt_flat_tree const* ) override {}
+        task< void > on_collect_data( std::string_view, asrt_flat_tree const* ) override
+        {
+                co_return;
+        }
 
-        void on_stream_data( std::string_view, asrt::stream_schemas const& ) override {}
+        task< void > on_stream_data( std::string_view, asrt::stream_schemas const& ) override
+        {
+                co_return;
+        }
 };
 
 std::shared_ptr< pbar::terminal_progress > g_bar;
@@ -195,7 +212,7 @@ task< void > run_tcp(
     output_fs&                      fs,
     std::filesystem::path           output_dir )
 {
-        pbar_reporter reporter{ *g_bar };
+        pbar_reporter reporter{ ctx, *g_bar };
         auto          client = std::make_shared< uv_tcp_t >();
         if ( auto r = uv_tcp_init( loop, client.get() ); r != 0 ) {
                 ASRT_ERR_LOG( "asrtio", "uv_tcp_init failed: %s", uv_strerror( r ) );
@@ -221,7 +238,7 @@ task< void > run_rsim(
     output_fs&                      fs,
     std::filesystem::path           output_dir )
 {
-        pbar_reporter reporter{ *g_bar };
+        pbar_reporter reporter{ ctx, *g_bar };
         auto          rs = arena.make< rsim_ctx >( loop, seed );
         rs->start();
 
@@ -257,7 +274,7 @@ task< void > run_serial(
     output_fs&                      fs,
     std::filesystem::path           output_dir )
 {
-        pbar_reporter reporter{ *g_bar };
+        pbar_reporter reporter{ ctx, *g_bar };
         std::string   errmsg;
         auto          transport = serial_transport::open( loop, cfg, errmsg );
         if ( !transport ) {
