@@ -18,7 +18,7 @@ set(ASRT_LIBRARIES
 # Only pull in ecor when at least one C++ wrapper library is requested.
 foreach(_lib IN LISTS _asrt_cxx_libraries)
   if(_lib IN_LIST ASRT_LIBRARIES)
-    cpmaddpackage("gh:koniarik/ecor@0.2.3")
+    cpmaddpackage("gh:koniarik/ecor@0.3.0")
     break()
   endif()
 endforeach()
