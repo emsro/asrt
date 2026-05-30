@@ -256,6 +256,7 @@ struct stream_schema
         }
 
         /// Encode @p args in-place and send a DATA message using the underlying emit function.
+        /// Encode @p args in-place and send a DATA message using the underlying emit function.
         ASRT_NODISCARD status emit(
             typename strm_field_traits< Ts >::value_type const&... args,
             callback< asrt_stream_done_cb > done_cb )

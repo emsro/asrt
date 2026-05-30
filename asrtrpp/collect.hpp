@@ -93,11 +93,15 @@ ASRT_NODISCARD inline flat_id root_id( asrt_collect_client const& cc )
 }
 
 /// Sender that appends a single node to the collect client's tree.
-template < typename T >
-struct _collect_insert_ctx;
+inline asrt_flat_value _make_collect_scalar_value( auto val, auto member, auto type )
+{
+        using member_type = decltype( asrt_flat_scalar{}.*member );
+        asrt_flat_value v = { .type = static_cast< asrt_flat_value_type >( type ) };
+        v.data.s.*member  = static_cast< member_type >( val );
+        return v;
+}
 
-template < collect_scalar T >
-struct _collect_insert_ctx< T >
+struct _collect_insert_scalar_ctx
 {
         using completion_signatures =
             ecor::completion_signatures< ecor::set_value_t(), ecor::set_error_t( status ) >;
@@ -105,20 +109,16 @@ struct _collect_insert_ctx< T >
         asrt_collect_client* client;
         flat_id              parent;
         char const*          key;
-        T                    val;
+        asrt_flat_value      value;
 
         template < typename OP >
         void start( OP& op )
         {
-                using traits             = collect_append_traits< T >;
-                using member_type        = decltype( asrt_flat_scalar{}.*traits::member );
-                asrt_flat_value v        = { .type = traits::flat_type };
-                v.data.s.*traits::member = static_cast< member_type >( val );
-                auto s                   = asrt_collect_client_insert(
+                auto s = asrt_collect_client_insert(
                     client,
                     parent,
                     key,
-                    &v,
+                    &value,
                     nullptr,
                     +[]( void* ptr, enum asrt_status st ) {
                             auto* o = static_cast< OP* >( ptr );
@@ -133,8 +133,7 @@ struct _collect_insert_ctx< T >
         }
 };
 
-template < collect_container T >
-struct _collect_insert_ctx< T >
+struct _collect_insert_container_ctx
 {
         using completion_signatures = ecor::
             completion_signatures< ecor::set_value_t( flat_id ), ecor::set_error_t( status ) >;
@@ -142,18 +141,17 @@ struct _collect_insert_ctx< T >
         asrt_collect_client* client;
         flat_id              parent;
         char const*          key;
+        asrt_flat_value      value;
         flat_id              out = 0;
 
         template < typename OP >
         void start( OP& op )
         {
-                using traits      = collect_append_traits< T >;
-                asrt_flat_value v = { .type = traits::flat_type };
-                auto            s = asrt_collect_client_insert(
+                auto s = asrt_collect_client_insert(
                     client,
                     parent,
                     key,
-                    &v,
+                    &value,
                     &out,
                     +[]( void* ptr, enum asrt_status st ) {
                             auto* o = static_cast< OP* >( ptr );
@@ -168,9 +166,8 @@ struct _collect_insert_ctx< T >
         }
 };
 
-template < typename T >
-        requires collect_scalar< T > || collect_container< T >
-using collect_insert_sender = ecor::sender_from< _collect_insert_ctx< T > >;
+using collect_scalar_insert_sender    = ecor::sender_from< _collect_insert_scalar_ctx >;
+using collect_container_insert_sender = ecor::sender_from< _collect_insert_container_ctx >;
 
 /// Scalar insert with key: set<uint32_t>(parent, "key", 42, cb).
 template < collect_scalar T >
@@ -192,7 +189,12 @@ status set(
 template < collect_scalar T >
 ecor::sender auto set( asrt_collect_client& cc, flat_id parent, char const* key, T val )
 {
-        return collect_insert_sender< T >{ { &cc, parent, key, val } };
+        using traits = collect_append_traits< T >;
+        return collect_scalar_insert_sender{
+            { &cc,
+              parent,
+              key,
+              _make_collect_scalar_value( val, traits::member, traits::flat_type ) } };
 }
 
 /// Scalar append without key (array child): append<uint32_t>(parent, 42).
@@ -225,7 +227,9 @@ status set(
 template < collect_container T >
 ecor::sender auto set( asrt_collect_client& client, flat_id parent, char const* key )
 {
-        return collect_insert_sender< T >{ { &client, parent, key } };
+        using traits = collect_append_traits< T >;
+        return collect_container_insert_sender{
+            { &client, parent, key, { .type = traits::flat_type } } };
 }
 
 /// Container append without key (array child): append<obj>(parent, out_id).
@@ -243,14 +247,14 @@ status append(
 template < collect_scalar T >
 ecor::sender auto append( asrt_collect_client& cc, flat_id parent, T val )
 {
-        return collect_insert_sender< T >{ { &cc, parent, nullptr, val } };
+        return set( cc, parent, nullptr, val );
 }
 
 /// co_await append<T>(client, parent) — container without key (array child); returns flat_id.
 template < collect_container T >
 ecor::sender auto append( asrt_collect_client& client, flat_id parent )
 {
-        return collect_insert_sender< T >{ { &client, parent, nullptr } };
+        return set< T >( client, parent, nullptr );
 }
 
 inline void deinit( asrt_collect_client& client )

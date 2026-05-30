@@ -10,9 +10,9 @@
 /// PERFORMANCE OF THIS SOFTWARE.
 #pragma once
 
+#include "./cntr_stream_sys.hpp"
 #include "./output_fs.hpp"
 #include "./param_config.hpp"
-#include "./pbar.hpp"
 #include "./task.hpp"
 #include "./transport.hpp"
 #include "./util.hpp"
@@ -25,9 +25,8 @@
 namespace asrtio
 {
 
-/// Each run_* coroutine drives a pbar_reporter backed by the provided bar.
-/// The caller is responsible for managing the bar's lifetime and for
-/// pointing g_active_bar at it before the task starts.
+/// Each run_* coroutine accepts an externally constructed reporter.
+/// The caller is responsible for constructing the reporter and managing its lifetime.
 
 task< void > run_tcp(
     task_ctx&                       ctx,
@@ -40,7 +39,7 @@ task< void > run_tcp(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar );
+    suite_reporter&                 reporter );
 
 task< void > run_rsim(
     task_ctx&                       ctx,
@@ -52,7 +51,7 @@ task< void > run_rsim(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar );
+    suite_reporter&                 reporter );
 
 task< void > run_serial(
     task_ctx&                       ctx,
@@ -64,6 +63,6 @@ task< void > run_serial(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar );
+    suite_reporter&                 reporter );
 
 }  // namespace asrtio

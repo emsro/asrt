@@ -50,27 +50,40 @@ private:
 using status = asrt_status;
 using ecor::suspend;
 
-struct test_fail_t
+/// Converts an ecor framework error to the nearest asrt status code.
+/// Exhaustive switch — compiler will error if task_error gains a new enumerator.
+constexpr status to_status( ecor::task_error e ) noexcept
 {
-};
-static constexpr test_fail_t test_fail{};
+        switch ( e ) {
+        case ecor::task_error::none:
+                return ASRT_SUCCESS;
+        case ecor::task_error::task_allocation_failure:
+                return ASRT_ALLOC_ERR;
+        case ecor::task_error::task_unhandled_exception:
+                return ASRT_UNHANDLED_EXCEPTION;
+        case ecor::task_error::task_unfinished:
+        case ecor::task_error::task_already_started:
+        case ecor::task_error::task_missing:
+                return ASRT_INTERNAL_ERR;
+        }
+}
 
 /// Error signatures and trace policy used by all asrt tasks.
 struct task_cfg
 {
-        using extra_error_signatures = ecor::
-            completion_signatures< ecor::set_error_t( status ), ecor::set_error_t( test_fail_t ) >;
-        using trace_type = ecor::task_default_trace;
+        using error_signatures = ecor::completion_signatures< ecor::set_error_t( status ) >;
+        using trace_type       = ecor::task_default_trace;
+
+        static status convert_error( ecor::task_error e ) noexcept { return to_status( e ); }
 };
 
 /// Coroutine task type used throughout asrt's C++ layer.
-/// Supports asrt::status and asrt::test_fail_t error channels.
+/// Supports asrt::status error channel (use ASRT_FAILURE for test assertion failures).
 template < typename T >
 using task = ecor::task< T, asrt::task_cfg >;
 
-/// Sender that completes with success if the contained status is ASRT_SUCCESS, and with test_fail
-/// otherwise. Can also be used as simple status wrapper - is comparable with status and convertible
-/// to status.
+/// Sender that completes with success if the contained status is ASRT_SUCCESS, and with
+/// ASRT_FAILURE otherwise.
 struct status_sender
 {
         using sender_concept = ecor::sender_t;

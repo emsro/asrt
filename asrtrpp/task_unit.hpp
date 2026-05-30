@@ -60,11 +60,56 @@ struct task_unit_recv
         asrt_test_state* done;
 
         void set_value() const { *done = ASRT_TEST_PASS; }
-        void set_error( ecor::task_error ) const { *done = ASRT_TEST_FAIL; }
-        void set_error( test_fail_t ) const { *done = ASRT_TEST_FAIL; }
-        void set_error( asrt::status ) const { *done = ASRT_TEST_ERROR; }
+        void set_error( asrt::status s ) const
+        {
+                *done = ( s == ASRT_FAILURE ) ? ASRT_TEST_FAIL : ASRT_TEST_ERROR;
+        }
         void set_stopped() const { *done = ASRT_TEST_FAIL; }
 };
+
+template < typename T >
+struct task_unit_base : asrt_test
+{
+        using asrt_test::asrt_test;
+        using task_type  = T;
+        using op_type    = ecor::connect_type< task_type, task_unit_recv >;
+        using op_deleter = task_op_deleter< op_type >;
+        using op_ptr     = std::unique_ptr< op_type, op_deleter >;
+
+        task_unit_base( ecor::task_memory_resource& mem )
+          : _op{ nullptr, op_deleter{ &mem } }
+        {
+        }
+
+        asrt_status base_cb(
+            record*                     rec,
+            ecor::task_memory_resource& mem,
+            T ( *cb )( task_unit_base* ) )
+        {
+                if ( rec->state == ASRT_TEST_INIT ) {
+                        rec->state = ASRT_TEST_RUNNING;
+                        void* p    = mem.allocate( sizeof( op_type ), alignof( op_type ) );
+                        _op.reset( new ( p ) op_type(
+                            cb( this ).connect( task_unit_recv{ &_done_state } ) ) );
+                        _op->start();
+                }
+
+                if ( _op && _done_state != ASRT_TEST_RUNNING ) {
+                        rec->state  = _done_state;
+                        _done_state = ASRT_TEST_RUNNING;
+                        _op.reset();
+                }
+
+                return ASRT_SUCCESS;
+        }
+
+protected:
+        op_ptr          _op;
+        asrt_test_state _done_state = ASRT_TEST_RUNNING;
+};
+
+template < typename T >
+using task_unit_task_type = decltype( std::declval< T >().exec() );
 
 /// Coroutine test adaptor that wraps a definition type T into an asrt_test
 /// driven by an ecor coroutine.  T must provide:
@@ -73,12 +118,13 @@ struct task_unit_recv
 /// The coroutine runs incrementally: the reactor calls cb() on every tick
 /// until exec() completes.
 template < typename T >
-struct task_unit : asrt_test
+struct task_unit : task_unit_base< task_unit_task_type< T > >
 {
-
+        using base = task_unit_base< task_unit_task_type< T > >;
 
         task_unit( T def )
-          : _def( std::move( def ) )
+          : base( ecor::get_memory_resource( def ) )
+          , _def( std::move( def ) )
         {
                 asrt_test_init( this, _def.name, static_cast< task_unit* >( this ), task_unit::cb );
         }
@@ -90,35 +136,16 @@ struct task_unit : asrt_test
 
         static asrt_status cb( record* rec )
         {
-                auto& self = *static_cast< task_unit* >( rec->inpt->test_ptr );
+                auto* self = static_cast< task_unit* >( rec->inpt->test_ptr );
 
-                if ( rec->state == ASRT_TEST_INIT ) {
-                        rec->state = ASRT_TEST_RUNNING;
-                        auto& mem  = ecor::get_memory_resource( self._def );
-                        void* p    = mem.allocate( sizeof( op_type ), alignof( op_type ) );
-                        self._op.reset( new ( p ) op_type(
-                            self._def.exec().connect( task_unit_recv{ &self._done_state } ) ) );
-                        self._op->start();
-                }
-
-                if ( self._op && self._done_state != ASRT_TEST_RUNNING ) {
-                        rec->state       = self._done_state;
-                        self._done_state = ASRT_TEST_RUNNING;
-                        self._op.reset();
-                }
-
-                return ASRT_SUCCESS;
+                return self->base_cb( rec, ecor::get_memory_resource( self->_def ), []( base* b ) {
+                        auto* self = static_cast< task_unit* >( b );
+                        return self->_def.exec();
+                } );
         }
 
 private:
-        using task_type  = decltype( std::declval< T >().exec() );
-        using op_type    = ecor::connect_type< task_type, task_unit_recv >;
-        using op_deleter = task_op_deleter< op_type >;
-        using op_ptr     = std::unique_ptr< op_type, op_deleter >;
-
-        T               _def;
-        asrt_test_state _done_state = ASRT_TEST_RUNNING;
-        op_ptr          _op{ nullptr, op_deleter{ &ecor::get_memory_resource( _def ) } };
+        T _def;
 };
 
 }  // namespace asrt

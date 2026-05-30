@@ -20,6 +20,8 @@ extern "C" {
 inline static char const* asrt_status_to_str( enum asrt_status st )
 {
         switch ( st ) {
+        case ASRT_UNHANDLED_EXCEPTION:
+                return "unhandled exception";
         case ASRT_VERSION_ERR:
                 return "version mismatch";
         case ASRT_KEY_FORBIDDEN_ERR:
@@ -48,6 +50,8 @@ inline static char const* asrt_status_to_str( enum asrt_status st )
                 return "lifecycle stage error";
         case ASRT_SUCCESS:
                 return "success";
+        case ASRT_FAILURE:
+                return "test failure";
         }
         return "unknown error";
 }

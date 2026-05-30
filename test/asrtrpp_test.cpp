@@ -944,7 +944,7 @@ struct tu_pass : asrt::task_test
 struct tu_fail : asrt::task_test
 {
         char const*        name = "tu_fail";
-        asrt::task< void > exec() { co_yield asrt::with_error{ asrt::test_fail }; }
+        asrt::task< void > exec() { co_yield asrt::with_error{ ASRT_FAILURE }; }
 };
 
 struct tu_error : asrt::task_test
@@ -973,7 +973,7 @@ struct tu_multi_fail : asrt::task_test
         {
                 co_await asrt::suspend;
                 co_await asrt::suspend;
-                co_yield asrt::with_error{ asrt::test_fail };
+                co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
@@ -1413,9 +1413,10 @@ struct param_sender_ctx
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }
-                        void set_error( ecor::task_error ) { *out = ASRT_TEST_FAIL; }
-                        void set_error( asrt::status ) { *out = ASRT_TEST_ERROR; }
-                        void set_error( asrt::test_fail_t ) { *out = ASRT_TEST_FAIL; }
+                        void set_error( asrt::status s )
+                        {
+                                *out = ( s == ASRT_FAILURE ) ? ASRT_TEST_FAIL : ASRT_TEST_ERROR;
+                        }
                         void set_stopped() { *out = ASRT_TEST_FAIL; }
                 };
                 asrt_test_state result = ASRT_TEST_INIT;
@@ -2022,9 +2023,7 @@ struct collect_sender_ctx : collect_cpp_ctx
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }
-                        void set_error( ecor::task_error ) { *out = ASRT_TEST_FAIL; }
                         void set_error( asrt::status ) { *out = ASRT_TEST_FAIL; }
-                        void set_error( asrt::test_fail_t ) { *out = ASRT_TEST_FAIL; }
                         void set_stopped() { *out = ASRT_TEST_FAIL; }
                 };
                 asrt_test_state result = ASRT_TEST_INIT;
@@ -2571,9 +2570,10 @@ struct diag_sender_ctx : diag_ctx
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }
-                        void set_error( ecor::task_error ) { *out = ASRT_TEST_FAIL; }
-                        void set_error( asrt::status ) { *out = ASRT_TEST_ERROR; }
-                        void set_error( asrt::test_fail_t ) { *out = ASRT_TEST_FAIL; }
+                        void set_error( asrt::status s )
+                        {
+                                *out = ( s == ASRT_FAILURE ) ? ASRT_TEST_FAIL : ASRT_TEST_ERROR;
+                        }
                         void set_stopped() { *out = ASRT_TEST_FAIL; }
                 };
                 asrt_test_state result = ASRT_TEST_INIT;

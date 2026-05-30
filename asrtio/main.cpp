@@ -12,6 +12,7 @@
 #include "../asrtl/log.h"
 #include "./final_receiver.hpp"
 #include "./log_sink.hpp"
+#include "./pbar_reporter.hpp"
 #include "./real_fs.hpp"
 #include "./run_session.hpp"
 
@@ -67,6 +68,7 @@ int main( int argc, char* argv[] )
         null_fs                           nfs;
         task_ctx                          ctx{ mem_res };
         arena                             ar{ ctx, mem_res };
+        pbar_reporter                     pr{ ctx, g_bar };
         steady_clock                      clk;
         uv_idle_t                         idle;
         CLI::App                          app{ "App description" };
@@ -128,7 +130,7 @@ int main( int argc, char* argv[] )
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
                             output_dir,
-                            g_bar );
+                            pr );
                 } );
         } );
 
@@ -156,7 +158,7 @@ int main( int argc, char* argv[] )
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
                             output_dir,
-                            g_bar );
+                            pr );
                 } );
         } );
 
@@ -198,7 +200,7 @@ int main( int argc, char* argv[] )
                             std::move( params ),
                             output_dir.empty() ? static_cast< output_fs& >( nfs ) : rfs,
                             output_dir,
-                            g_bar );
+                            pr );
                 } );
         } );
 
@@ -231,6 +233,7 @@ int main( int argc, char* argv[] )
 
         uv_run( loop, UV_RUN_DEFAULT );
         uv_loop_close( loop );
+        g_bar.finish();
 
         g_log_file = nullptr;
         log_writer.reset();

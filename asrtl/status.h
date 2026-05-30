@@ -18,6 +18,9 @@ extern "C" {
 
 enum asrt_status
 {
+        /// An unhandled exception was thrown inside a coroutine task.
+        ASRT_UNHANDLED_EXCEPTION = -14,
+
         /// Protocol version reported by the reactor does not match what the controller expects.
         ASRT_VERSION_ERR = -13,
 
@@ -72,6 +75,9 @@ enum asrt_status
 
         /// Operation completed successfully.
         ASRT_SUCCESS = 1,
+
+        /// A test failed (e.g. an assertion failure in a test task).
+        ASRT_FAILURE = 2,
 };
 
 #ifdef __cplusplus

@@ -85,9 +85,10 @@ struct task_result_receiver
         asrt_test_state* out;
 
         void set_value() const { *out = ASRT_TEST_PASS; }
-        void set_error( ecor::task_error ) const { *out = ASRT_TEST_FAIL; }
-        void set_error( asrt::status ) const { *out = ASRT_TEST_ERROR; }
-        void set_error( asrt::test_fail_t ) const { *out = ASRT_TEST_FAIL; }
+        void set_error( asrt::status s ) const
+        {
+                *out = ( s == ASRT_FAILURE ) ? ASRT_TEST_FAIL : ASRT_TEST_ERROR;
+        }
         void set_stopped() const { *out = ASRT_TEST_FAIL; }
         auto get_env() const noexcept { return ecor::empty_env{}; }
 };

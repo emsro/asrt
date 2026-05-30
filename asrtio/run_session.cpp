@@ -13,7 +13,6 @@
 #include "../asrtl/log.h"
 #include "./cntr_stream_sys.hpp"
 #include "./euv.hpp"
-#include "./pbar_reporter.hpp"
 #include "./rsim.hpp"
 
 #include <memory>
@@ -35,10 +34,9 @@ task< void > run_tcp(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar )
+    suite_reporter&                 reporter )
 {
-        pbar_reporter reporter{ ctx, bar };
-        auto          client = std::make_shared< uv_tcp_t >();
+        auto client = std::make_shared< uv_tcp_t >();
         if ( auto r = uv_tcp_init( loop, client.get() ); r != 0 ) {
                 ASRT_ERR_LOG( "asrtio", "uv_tcp_init failed: %s", uv_strerror( r ) );
                 co_await ecor::just_error( ASRT_INIT_ERR );
@@ -48,7 +46,6 @@ task< void > run_tcp(
         sys->start();
 
         co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
-        bar.finish();
 }
 
 task< void > run_rsim(
@@ -61,10 +58,9 @@ task< void > run_rsim(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar )
+    suite_reporter&                 reporter )
 {
-        pbar_reporter reporter{ ctx, bar };
-        auto          rs = arena.make< rsim_ctx >( loop, seed );
+        auto rs = arena.make< rsim_ctx >( loop, seed );
         rs->start();
 
         auto client = std::make_shared< uv_tcp_t >();
@@ -78,7 +74,6 @@ task< void > run_rsim(
 
         co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
         ASRT_INF_LOG( "asrtio", "run test suite finished" );
-        bar.finish();
 }
 
 task< void > run_serial(
@@ -91,11 +86,10 @@ task< void > run_serial(
     std::unique_ptr< param_config > params,
     output_fs&                      fs,
     std::filesystem::path           output_dir,
-    pbar::terminal_progress&        bar )
+    suite_reporter&                 reporter )
 {
-        pbar_reporter reporter{ ctx, bar };
-        std::string   errmsg;
-        auto          transport = serial_transport::open( loop, cfg, errmsg );
+        std::string errmsg;
+        auto        transport = serial_transport::open( loop, cfg, errmsg );
         if ( !transport ) {
                 ASRT_ERR_LOG( "asrtio", "Failed to open serial port: %s", errmsg.c_str() );
                 co_await ecor::just_error( ASRT_INIT_ERR );
@@ -105,7 +99,6 @@ task< void > run_serial(
         sys->start();
 
         co_await run_test_suite( ctx, *sys, reporter, timeout, *params, fs, output_dir );
-        bar.finish();
 }
 
 }  // namespace asrtio

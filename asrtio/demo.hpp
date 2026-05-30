@@ -469,12 +469,12 @@ struct pass_demo_task : asrt::task_test
         asrt::task< void > exec() { co_return; }
 };
 
-/// Immediately fails via test_fail.
+/// Immediately fails via ASRT_FAILURE.
 struct fail_demo_task : asrt::task_test
 {
         char const* name = "fail_demo_task";
 
-        asrt::task< void > exec() { co_yield asrt::with_error{ asrt::test_fail }; }
+        asrt::task< void > exec() { co_yield asrt::with_error{ ASRT_FAILURE }; }
 };
 
 /// Reports a test infrastructure error via test_error.
@@ -506,11 +506,11 @@ struct check_demo_task : asrt::task_test
         asrt::task< void > exec()
         {
                 if ( 2 + 3 != 5 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
-/// Checks a failing condition — yields test_fail.
+/// Checks a failing condition — yields ASRT_FAILURE.
 struct check_fail_demo_task : asrt::task_test
 {
         char const* name = "check_fail_demo_task";
@@ -518,7 +518,7 @@ struct check_fail_demo_task : asrt::task_test
         asrt::task< void > exec()
         {
                 if ( 2 + 2 != 5 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
@@ -531,7 +531,7 @@ struct multi_step_fail_demo_task : asrt::task_test
         {
                 for ( int i = 0; i < 3; ++i )
                         co_await asrt::suspend;
-                co_yield asrt::with_error{ asrt::test_fail };
+                co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
@@ -554,7 +554,7 @@ struct param_query_demo_task : asrt::task_test
                 auto x = co_await asrt::fetch< uint32_t >( pc, 1 );
                 auto y = co_await asrt::fetch< int32_t >( pc, 1 );
                 if ( x != y )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
@@ -577,7 +577,7 @@ struct param_query_find_demo_task : asrt::task_test
                 auto x = co_await asrt::find< uint32_t >( pc, asrt::root_id( pc ), "count" );
                 auto y = co_await asrt::find< int32_t >( pc, asrt::root_id( pc ), "count" );
                 if ( x != y )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
@@ -603,31 +603,31 @@ struct param_type_overview_task : asrt::task_test
 
                 auto u = co_await asrt::find< uint32_t >( pc, root, "u32" );
                 if ( u != 42 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 auto i = co_await asrt::find< int32_t >( pc, root, "i32" );
                 if ( i != -7 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 auto f = co_await asrt::find< float >( pc, root, "flt" );
                 if ( f < 3.13F || f > 3.15F )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 auto s = co_await asrt::find< char const* >( pc, root, "str" );
                 if ( std::string_view{ s } != "hello" )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 auto b = co_await asrt::find< bool >( pc, root, "bln" );
                 if ( !b )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 asrt_flat_child_list obj = co_await asrt::find< asrt::obj >( pc, root, "obj" );
                 if ( obj.first_child == 0 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 asrt_flat_child_list arr = co_await asrt::find< asrt::arr >( pc, root, "arr" );
                 if ( arr.first_child == 0 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 // Iterate over array elements
                 uint32_t      count = 0;
@@ -638,7 +638,7 @@ struct param_type_overview_task : asrt::task_test
                         id = next_sibling;
                 }
                 if ( count == 0 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
 
                 // Iterate over object children and touch their keys
                 count = 0;
@@ -647,12 +647,12 @@ struct param_type_overview_task : asrt::task_test
                         auto [val, key, next_sibling] =
                             co_await asrt::fetch< asrt_flat_value >( pc, id );
                         if ( !key || key[0] == '\0' )
-                                co_yield asrt::with_error{ asrt::test_fail };
+                                co_yield asrt::with_error{ ASRT_FAILURE };
                         ++count;
                         id = next_sibling;
                 }
                 if ( count == 0 )
-                        co_yield asrt::with_error{ asrt::test_fail };
+                        co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
 
