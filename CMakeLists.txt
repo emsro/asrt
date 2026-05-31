@@ -6,6 +6,8 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 include(cmake/CPM.cmake)
 
+option(ASRT_BUILD_TESTS "Build ASRT tests" ${PROJECT_IS_TOP_LEVEL})
+
 set(_asrt_cxx_libraries asrtlpp asrtcpp asrtrpp asrtio)
 set(_asrt_all_libraries asrtl asrtc asrtr ${_asrt_cxx_libraries})
 
@@ -29,13 +31,14 @@ foreach(_lib IN LISTS _asrt_all_libraries)
   endif()
 endforeach()
 
-include(CTest)
+if(ASRT_BUILD_TESTS)
+  include(CTest)
 
-if(BUILD_TESTING)
-  enable_testing()
-  add_subdirectory(test)
+  if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(test)
+  endif()
 endif()
-
 # --- install / package config ---
 
 # C libraries (asrtl, asrtc, asrtr) — no external dependencies
