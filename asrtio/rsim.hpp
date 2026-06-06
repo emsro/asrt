@@ -78,6 +78,7 @@ struct rsim_assembly
                 reg_task_demo< collect_demo_task >( assm.collect );
                 reg_task_demo< stream_demo_task >( assm.stream );
                 reg_task_demo< stream_sensor_demo_task >( assm.stream );
+                reg_task_demo< nested_find_demo_task >( assm.param );
         }
 
         void reg_demo( demo_spec spec )

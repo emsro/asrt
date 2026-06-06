@@ -259,6 +259,8 @@ inline void deinit( asrt_param_client& client )
 
 /// Result of a completed param query.
 /// @p key points into the param client's internal cache — valid until the next query.
+/// @p node_id is the ID of the node that was queried or found — use this as
+/// the parent_id for subsequent find/fetch calls into this node's children.
 template < has_param_query_traits T >
 struct param_result
 {
@@ -267,6 +269,7 @@ struct param_result
         value_type  value;
         char const* key;  // Points to internal buffer of param client, valid until next query
         flat_id     next_sibling;
+        flat_id     node_id;  // ID of the node that was queried/found
 
         operator value_type() const { return value; }
 };
@@ -298,7 +301,8 @@ struct _param_query_ctx
                                 o->receiver.set_value( param_result< T >{
                                     static_cast< traits::value_type >( raw ),
                                     q->key,
-                                    q->next_sibling } );
+                                    q->next_sibling,
+                                    q->node_id } );
                 };
                 auto s = query< T >( *client, &q, node_id, key, cb, &op );
                 if ( s != ASRT_SUCCESS )

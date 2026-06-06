@@ -633,7 +633,8 @@ struct param_type_overview_task : asrt::task_test
                 uint32_t      count = 0;
                 asrt::flat_id id    = arr.first_child;
                 while ( id != 0 ) {
-                        auto [val, key, next_sibling] = co_await asrt::fetch< uint32_t >( pc, id );
+                        auto [val, key, next_sibling, node_id] =
+                            co_await asrt::fetch< uint32_t >( pc, id );
                         ++count;
                         id = next_sibling;
                 }
@@ -644,7 +645,7 @@ struct param_type_overview_task : asrt::task_test
                 count = 0;
                 id    = obj.first_child;
                 while ( id != 0 ) {
-                        auto [val, key, next_sibling] =
+                        auto [val, key, next_sibling, node_id] =
                             co_await asrt::fetch< asrt_flat_value >( pc, id );
                         if ( !key || key[0] == '\0' )
                                 co_yield asrt::with_error{ ASRT_FAILURE };
@@ -652,6 +653,53 @@ struct param_type_overview_task : asrt::task_test
                         id = next_sibling;
                 }
                 if ( count == 0 )
+                        co_yield asrt::with_error{ ASRT_FAILURE };
+        }
+};
+
+/// Nested find demo: finds an object by key, then uses result.node_id to look
+/// up named children inside that object — demonstrates the node_id field added
+/// to param_result<T>.
+///
+/// Expected param tree (matches the rsim default):
+///   root
+///     "demo_param_count"  OBJECT
+///       "a"  U32  1
+///       "b"  U32  2
+///       "c"  U32  3
+///
+/// Passes trivially when no param tree is loaded.
+struct nested_find_demo_task : asrt::task_test
+{
+        char const*        name = "nested_find_demo_task";
+        asrt_param_client& pc;
+
+        nested_find_demo_task( task_ctx& ctx, asrt_param_client& p )
+          : task_test( ctx )
+          , pc( p )
+        {
+        }
+
+        asrt::task< void > exec()
+        {
+                // Pass trivially when no param tree has been sent by the controller.
+                if ( !asrt::ready( pc ) )
+                        co_return;
+
+                // Step 1: find the "demo_param_count" object at root level.
+                //   result.value     — asrt_flat_child_list (first/last child IDs)
+                //   result.node_id   — the addressable ID of the object node itself
+                auto container =
+                    co_await asrt::find< asrt::obj >( pc, asrt::root_id( pc ), "demo_param_count" );
+
+                // Step 2: use node_id as the parent for nested key lookups.
+                //   Without node_id, only first_child iteration would be possible;
+                //   find-by-key requires the parent's own node ID.
+                auto a = co_await asrt::find< uint32_t >( pc, container.node_id, "a" );
+                auto b = co_await asrt::find< uint32_t >( pc, container.node_id, "b" );
+                auto c = co_await asrt::find< uint32_t >( pc, container.node_id, "c" );
+
+                if ( a != 1u || b != 2u || c != 3u )
                         co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };

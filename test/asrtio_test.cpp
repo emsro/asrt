@@ -369,7 +369,7 @@ TEST_CASE( "suite_basic" )
         ASRT_DBG_LOG( "asrtio_test", "Running suite_basic" );
         suite_run r;
         REQUIRE( r.done );
-        CHECK( r.reporter.count == 23 );
+        CHECK( r.reporter.count == 24 );
         CHECK( r.reporter.starts.size() == r.reporter.count );
         CHECK( r.reporter.done_names.size() == r.reporter.count );
         REQUIRE( r.reporter.done_names_at_on_done != -1 );
@@ -408,6 +408,7 @@ TEST_CASE( "suite_basic" )
         CHECK( r.reporter.done_names[20] == "collect_demo_task" );
         CHECK( r.reporter.done_names[21] == "stream_demo_task" );
         CHECK( r.reporter.done_names[22] == "stream_sensor_demo_task" );
+        CHECK( r.reporter.done_names[23] == "nested_find_demo_task" );
         CHECK( r.reporter.passed[0] == true );
         CHECK( r.reporter.passed[1] == false );
         CHECK( r.reporter.passed[2] == true );
@@ -429,6 +430,7 @@ TEST_CASE( "suite_basic" )
         CHECK( r.reporter.passed[20] == true );
         CHECK( r.reporter.passed[21] == true );
         CHECK( r.reporter.passed[22] == true );
+        CHECK( r.reporter.passed[23] == true );
 }
 
 TEST_CASE( "suite_deterministic" )
@@ -2205,7 +2207,7 @@ TEST_CASE( "suite_serial_pty" )
         drain_loop( loop );
 
         CHECK( done );
-        CHECK( reporter.count == 23 );
+        CHECK( reporter.count == 24 );
         CHECK( reporter.starts.size() == reporter.count );
         CHECK( reporter.done_names.size() == reporter.count );
 }
