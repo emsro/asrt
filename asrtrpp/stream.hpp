@@ -121,6 +121,17 @@ struct strm_field_traits< bool >
         static void           encode( uint8_t*& p, bool v ) { *p++ = v ? 1 : 0; }
 };
 
+template <>
+struct strm_field_traits< char >
+{
+        using value_type                            = char;
+        static constexpr auto        tag            = ASRT_STRM_FIELD_U8;
+        static constexpr auto        size           = 1;
+        static constexpr std::size_t field_def_size = 1;
+        static constexpr void encode_def( uint8_t*& p ) { *p++ = static_cast< uint8_t >( tag ); }
+        static void           encode( uint8_t*& p, char v ) { *p++ = static_cast< uint8_t >( v ); }
+};
+
 template < typename T, std::size_t N >
 struct strm_field_traits< T[N] >
 {

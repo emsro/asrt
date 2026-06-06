@@ -2550,6 +2550,85 @@ TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: nested uint8_t[4][3]" )
                 CHECK_EQ( (int) ( i + 1 ), (int) rec->data[i] );
 }
 
+// --- char / char[N] typed wrapper ---
+
+TEST_CASE( "strm_field_traits: char size and field_def_size" )
+{
+        CHECK_EQ( 1U, asrt::strm_field_traits< char >::size );
+        CHECK_EQ( 1U, asrt::strm_field_traits< char >::field_def_size );
+        CHECK_EQ( (uint8_t) ASRT_STRM_FIELD_U8, (uint8_t) asrt::strm_field_traits< char >::tag );
+}
+
+TEST_CASE( "strm_field_traits: char[8] size and field_def_size" )
+{
+        using cf8 = char[8];
+        CHECK_EQ( 8U, asrt::strm_field_traits< cf8 >::size );
+        CHECK_EQ( 4U, asrt::strm_field_traits< cf8 >::field_def_size );  // ARRAY+2+U8
+}
+
+TEST_CASE( "strm_schema: char[8] emit_size and field_def_bytes" )
+{
+        using schema_t = asrt::stream_schema< char[8] >;
+        CHECK_EQ( 8U, schema_t::emit_size );
+        REQUIRE_EQ( 4U, schema_t::field_def_bytes.size() );
+        CHECK_EQ( (uint8_t) ASRT_STRM_FIELD_ARRAY, schema_t::field_def_bytes[0] );
+        CHECK_EQ( 0x00, schema_t::field_def_bytes[1] );
+        CHECK_EQ( 0x08, schema_t::field_def_bytes[2] );
+        CHECK_EQ( (uint8_t) ASRT_STRM_FIELD_U8, schema_t::field_def_bytes[3] );
+}
+
+TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: char[8] define + emit" )
+{
+        using schema_t = asrt::stream_schema< char[8] >;
+        schema_t schema( client, 0, {} );
+        tick_client();
+
+        CHECK_EQ( 8U, schema_t::emit_size );
+
+        char val[8]{};
+        std::strncpy( val, "hello", sizeof( val ) - 1 );
+        CHECK_EQ( ASRT_SUCCESS, schema.emit( val, {} ) );
+        tick_client();
+
+        auto result = asrt::take( server );
+        REQUIRE_EQ( 1U, result->schema_count );
+        auto* rec = result->schemas[0].first;
+        REQUIRE_NE( nullptr, rec );
+
+        CHECK_EQ( 'h', (char) rec->data[0] );
+        CHECK_EQ( 'e', (char) rec->data[1] );
+        CHECK_EQ( 'l', (char) rec->data[2] );
+        CHECK_EQ( 'l', (char) rec->data[3] );
+        CHECK_EQ( 'o', (char) rec->data[4] );
+        CHECK_EQ( '\0', (char) rec->data[5] );
+}
+
+TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: uint32_t + char[16] multi-field" )
+{
+        using schema_t = asrt::stream_schema< uint32_t, char[16] >;
+        schema_t schema( client, 0, {} );
+        tick_client();
+
+        CHECK_EQ( 20U, schema_t::emit_size );  // 4 + 16
+
+        char name[16]{};
+        std::strncpy( name, "current", sizeof( name ) - 1 );
+        CHECK_EQ( ASRT_SUCCESS, schema.emit( 42U, name, {} ) );
+        tick_client();
+
+        auto result = asrt::take( server );
+        REQUIRE_EQ( 1U, result->schema_count );
+        auto* rec = result->schemas[0].first;
+        REQUIRE_NE( nullptr, rec );
+
+        uint32_t u32_val;
+        asrt_u8d4_to_u32( rec->data, &u32_val );
+        CHECK_EQ( 42U, u32_val );
+        CHECK_EQ( 'c', (char) rec->data[4] );
+        CHECK_EQ( 'u', (char) rec->data[5] );
+        CHECK_EQ( 'r', (char) rec->data[6] );
+}
+
 // ---------------------------------------------------------------------------
 // diag_rec_sender
 
