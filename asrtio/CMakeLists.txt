@@ -10,7 +10,7 @@ add_library(asrtio_lib util.cpp param_config.cpp transport.cpp
                        cntr_stream_sys.cpp log_sink.cpp run_session.cpp)
 target_compile_features(asrtio_lib PUBLIC cxx_std_20)
 target_include_directories(asrtio_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv ecor
+target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv_a ecor
                                         nlohmann_json::nlohmann_json)
 find_package(Threads REQUIRED)
 target_link_libraries(asrtio_lib PUBLIC Threads::Threads)
