@@ -13,9 +13,7 @@
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
-#include <mutex>
 #include <termios.h>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -258,6 +256,11 @@ class posix_serial_worker final : public serial_worker
 public:
         bool init( int fd, std::string& errmsg )
         {
+                if ( int r = uv_mutex_init( &_mtx ); r != 0 ) {
+                        errmsg = std::string( "uv_mutex_init failed: " ) + uv_strerror( r );
+                        ::close( fd );
+                        return false;
+                }
                 uv_loop_init( &_loop );
                 uv_pipe_init( &_loop, &_pipe, /*ipc=*/0 );
                 if ( int r = uv_pipe_open( &_pipe, fd ); r != 0 ) {
@@ -266,9 +269,11 @@ public:
                         uv_close( reinterpret_cast< uv_handle_t* >( &_pipe ), nullptr );
                         uv_run( &_loop, UV_RUN_DEFAULT );
                         uv_loop_close( &_loop );
+                        uv_mutex_destroy( &_mtx );
                         return false;
                 }
-                _pipe.data = this;
+                _pipe.data   = this;
+                _initialized = true;
                 return true;
         }
 
@@ -296,46 +301,57 @@ public:
                             }
                             delete[] buf->base;
                     } );
-                _thread = std::thread( [this] {
-                        uv_run( &_loop, UV_RUN_DEFAULT );
-                } );
+                auto run = []( void* arg ) {
+                        uv_run(
+                            &static_cast< posix_serial_worker* >( arg )->_loop, UV_RUN_DEFAULT );
+                };
+                if ( int r = uv_thread_create( &_thread, run, this ); r != 0 ) {
+                        _sink->on_fail( r );
+                        return;
+                }
+                _started = true;
         }
 
         void write( std::vector< uint8_t > data ) override
         {
-                {
-                        std::lock_guard lk{ _mtx };
-                        _tx.push_back( std::move( data ) );
-                }
+                uv_mutex_lock( &_mtx );
+                _tx.push_back( std::move( data ) );
+                uv_mutex_unlock( &_mtx );
                 uv_async_send( &_wake );
         }
 
         ~posix_serial_worker() override
         {
-                if ( _thread.joinable() ) {
-                        {
-                                std::lock_guard lk{ _mtx };
-                                _stopping = true;
-                        }
+                if ( !_initialized )
+                        return;
+                if ( _started ) {
+                        uv_mutex_lock( &_mtx );
+                        _stopping = true;
+                        uv_mutex_unlock( &_mtx );
                         uv_async_send( &_wake );
-                        _thread.join();
+                        uv_thread_join( &_thread );
                 } else {
-                        uv_close( reinterpret_cast< uv_handle_t* >( &_pipe ), nullptr );
+                        uv_walk(
+                            &_loop,
+                            []( uv_handle_t* h, void* ) {
+                                    if ( !uv_is_closing( h ) )
+                                            uv_close( h, nullptr );
+                            },
+                            nullptr );
                         uv_run( &_loop, UV_RUN_DEFAULT );
                 }
                 uv_loop_close( &_loop );
+                uv_mutex_destroy( &_mtx );
         }
 
 private:
         void on_wake()
         {
                 std::vector< std::vector< uint8_t > > tx;
-                bool                                  stopping = false;
-                {
-                        std::lock_guard lk{ _mtx };
-                        tx.swap( _tx );
-                        stopping = _stopping;
-                }
+                uv_mutex_lock( &_mtx );
+                tx.swap( _tx );
+                bool const stopping = _stopping;
+                uv_mutex_unlock( &_mtx );
                 if ( stopping ) {
                         uv_close( reinterpret_cast< uv_handle_t* >( &_pipe ), nullptr );
                         uv_close( reinterpret_cast< uv_handle_t* >( &_wake ), nullptr );
@@ -349,10 +365,12 @@ private:
         uv_pipe_t                             _pipe;
         uv_async_t                            _wake;
         sink*                                 _sink = nullptr;
-        std::mutex                            _mtx;
+        uv_mutex_t                            _mtx;
         std::vector< std::vector< uint8_t > > _tx;                // guarded by _mtx
         bool                                  _stopping = false;  // guarded by _mtx
-        std::thread                           _thread;
+        uv_thread_t                           _thread;
+        bool                                  _initialized = false;
+        bool                                  _started     = false;
 };
 
 }  // namespace

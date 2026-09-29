@@ -10,36 +10,41 @@
 /// PERFORMANCE OF THIS SOFTWARE.
 #include "./transport.hpp"
 
-#include <mutex>
-
 namespace asrtio
 {
 
 struct serial_transport::state : serial_worker::sink
 {
         uv_async_t                                    async;
-        std::mutex                                    mtx;
+        uv_mutex_t                                    mtx;
+        bool                                          mtx_ready = false;
         std::vector< uint8_t >                        rx;       // guarded by mtx
         int                                           err = 0;  // guarded by mtx
         std::function< void( std::span< uint8_t > ) > data_cb;
         std::function< void( ssize_t ) >              error_cb;
         std::unique_ptr< serial_worker >              worker;
 
+        ~state() override
+        {
+                // The worker thread locks mtx, so it has to be joined first.
+                worker.reset();
+                if ( mtx_ready )
+                        uv_mutex_destroy( &mtx );
+        }
+
         void on_rx( std::span< uint8_t const > data ) override
         {
-                {
-                        std::lock_guard lk{ mtx };
-                        rx.insert( rx.end(), data.begin(), data.end() );
-                }
+                uv_mutex_lock( &mtx );
+                rx.insert( rx.end(), data.begin(), data.end() );
+                uv_mutex_unlock( &mtx );
                 uv_async_send( &async );
         }
 
         void on_fail( int e ) override
         {
-                {
-                        std::lock_guard lk{ mtx };
-                        err = e;
-                }
+                uv_mutex_lock( &mtx );
+                err = e;
+                uv_mutex_unlock( &mtx );
                 uv_async_send( &async );
         }
 
@@ -50,11 +55,10 @@ struct serial_transport::state : serial_worker::sink
                         return;
                 std::vector< uint8_t > data;
                 int                    e = 0;
-                {
-                        std::lock_guard lk{ mtx };
-                        data.swap( rx );
-                        std::swap( e, err );
-                }
+                uv_mutex_lock( &mtx );
+                data.swap( rx );
+                std::swap( e, err );
+                uv_mutex_unlock( &mtx );
                 if ( !data.empty() )
                         data_cb( data );
                 if ( e != 0 )
@@ -72,6 +76,11 @@ std::optional< serial_transport > serial_transport::open(
                 return std::nullopt;
 
         auto s = std::make_shared< state >();
+        if ( int r = uv_mutex_init( &s->mtx ); r != 0 ) {
+                errmsg = std::string( "uv_mutex_init failed: " ) + uv_strerror( r );
+                return std::nullopt;
+        }
+        s->mtx_ready = true;
         uv_async_init( loop, &s->async, []( uv_async_t* a ) {
                 static_cast< state* >( a->data )->deliver();
         } );

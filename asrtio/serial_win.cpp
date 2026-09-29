@@ -10,8 +10,6 @@
 /// PERFORMANCE OF THIS SOFTWARE.
 #include "./transport.hpp"
 
-#include <mutex>
-#include <thread>
 #include <vector>
 #include <windows.h>
 
@@ -107,6 +105,11 @@ class win_serial_worker final : public serial_worker
 public:
         bool init( serial_config const& cfg, std::string& errmsg )
         {
+                if ( int r = uv_mutex_init( &_mtx ); r != 0 ) {
+                        errmsg = std::string( "uv_mutex_init failed: " ) + uv_strerror( r );
+                        return false;
+                }
+                _mtx_ready = true;
                 // The \\.\ prefix is required for COM10 and above and accepted for all ports.
                 std::string path =
                     cfg.path.rfind( "\\\\.\\", 0 ) == 0 ? cfg.path : "\\\\.\\" + cfg.path;
@@ -136,36 +139,41 @@ public:
 
         void start( sink& s ) override
         {
-                _sink   = &s;
-                _thread = std::thread( [this] {
-                        run();
-                } );
+                _sink    = &s;
+                auto run = []( void* arg ) {
+                        static_cast< win_serial_worker* >( arg )->run();
+                };
+                if ( int r = uv_thread_create( &_thread, run, this ); r != 0 ) {
+                        _sink->on_fail( r );
+                        return;
+                }
+                _started = true;
         }
 
         void write( std::vector< uint8_t > data ) override
         {
-                {
-                        std::lock_guard lk{ _mtx };
-                        _tx.push_back( std::move( data ) );
-                }
+                uv_mutex_lock( &_mtx );
+                _tx.push_back( std::move( data ) );
+                uv_mutex_unlock( &_mtx );
                 SetEvent( _wake_ev );
         }
 
         ~win_serial_worker() override
         {
-                if ( _thread.joinable() ) {
-                        {
-                                std::lock_guard lk{ _mtx };
-                                _stopping = true;
-                        }
+                if ( _started ) {
+                        uv_mutex_lock( &_mtx );
+                        _stopping = true;
+                        uv_mutex_unlock( &_mtx );
                         SetEvent( _wake_ev );
-                        _thread.join();
+                        uv_thread_join( &_thread );
                 }
                 for ( HANDLE h : { _read_ev, _write_ev, _wake_ev } )
                         if ( h )
                                 CloseHandle( h );
                 if ( _port != INVALID_HANDLE_VALUE )
                         CloseHandle( _port );
+                if ( _mtx_ready )
+                        uv_mutex_destroy( &_mtx );
         }
 
 private:
@@ -215,12 +223,13 @@ private:
         bool flush_or_stop()
         {
                 std::vector< std::vector< uint8_t > > tx;
-                {
-                        std::lock_guard lk{ _mtx };
-                        if ( _stopping )
-                                return false;
+                uv_mutex_lock( &_mtx );
+                bool const stopping = _stopping;
+                if ( !stopping )
                         tx.swap( _tx );
-                }
+                uv_mutex_unlock( &_mtx );
+                if ( stopping )
+                        return false;
                 for ( auto& data : tx ) {
                         OVERLAPPED wr{};
                         wr.hEvent = _write_ev;
@@ -243,10 +252,12 @@ private:
                 _sink->on_fail( UV_EIO );
                 for ( ;; ) {
                         WaitForSingleObject( _wake_ev, INFINITE );
-                        std::lock_guard lk{ _mtx };
-                        if ( _stopping )
-                                return;
+                        uv_mutex_lock( &_mtx );
+                        bool const stopping = _stopping;
                         _tx.clear();
+                        uv_mutex_unlock( &_mtx );
+                        if ( stopping )
+                                return;
                 }
         }
 
@@ -255,10 +266,12 @@ private:
         HANDLE                                _write_ev = nullptr;
         HANDLE                                _wake_ev  = nullptr;
         sink*                                 _sink     = nullptr;
-        std::mutex                            _mtx;
+        uv_mutex_t                            _mtx;
+        bool                                  _mtx_ready = false;
         std::vector< std::vector< uint8_t > > _tx;                // guarded by _mtx
         bool                                  _stopping = false;  // guarded by _mtx
-        std::thread                           _thread;
+        uv_thread_t                           _thread;
+        bool                                  _started = false;
 };
 
 }  // namespace
