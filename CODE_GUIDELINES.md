@@ -15,6 +15,7 @@ Use CMake workflow presets to build and test the project.
 
 - Required command pattern:
   - `cmake --workflow --preset <name>`
+- Do not run bare `cmake --build` or `ctest` on their own.
 - Common preset for regular validation:
   - `cmake --workflow --preset debug`
 - Other supported presets:
