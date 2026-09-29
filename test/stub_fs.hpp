@@ -27,14 +27,14 @@ struct stub_fs : asrtio::output_fs
 
         bool create_directories( std::filesystem::path const& path ) override
         {
-                dirs.emplace_back( path.string() );
+                dirs.emplace_back( path.generic_string() );
                 return true;
         }
 
         asrtio::file_writer open_write( std::filesystem::path const& path ) override
         {
                 auto& entry  = _entries.emplace_back();
-                entry.path   = path.string();
+                entry.path   = path.generic_string();
                 entry.stream = std::ostringstream{};
                 return asrtio::file_writer{ entry.stream, *this };
         }

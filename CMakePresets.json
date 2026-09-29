@@ -55,6 +55,20 @@
         "ASRT_LIBRARIES": "asrtl;asrtc;asrtr",
         "BUILD_TESTING": "OFF"
       }
+    },
+    {
+      "name": "windows-debug",
+      "inherits": "debug",
+      "generator": "Ninja",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     }
   ],
   "buildPresets": [
@@ -81,6 +95,10 @@
     {
       "name": "release-c",
       "configurePreset": "release-c"
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-debug"
     }
   ],
   "testPresets": [
@@ -115,6 +133,13 @@
     {
       "name": "coverage",
       "configurePreset": "coverage",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows-debug",
       "output": {
         "outputOnFailure": true
       }
@@ -202,6 +227,23 @@
         },
         {
           "name": "ubsan",
+          "type": "test"
+        }
+      ]
+    },
+    {
+      "name": "windows-debug",
+      "steps": [
+        {
+          "name": "windows-debug",
+          "type": "configure"
+        },
+        {
+          "name": "windows-debug",
+          "type": "build"
+        },
+        {
+          "name": "windows-debug",
           "type": "test"
         }
       ]

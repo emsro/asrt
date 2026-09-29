@@ -55,7 +55,7 @@ struct cntr_stream_sys : cntr_sys
           : _transport( std::move( transport ) )
           , _clk( clk )
         {
-                auto st = asrt_cntr_assm_init( &_asm, asrt_default_allocator() );
+                auto st = asrt_cntr_assm_init( &_assm, asrt_default_allocator() );
                 ASRT_ASSERT( st == ASRT_SUCCESS );
                 if ( st != ASRT_SUCCESS )
                         ASRT_ERR_LOG(
@@ -66,7 +66,7 @@ struct cntr_stream_sys : cntr_sys
 
         asrt_diag_record* take_diag_record() override
         {
-                return asrt_diag_server_take_record( &_asm.diag );
+                return asrt_diag_server_take_record( &_assm.diag );
         }
 
         clock const& clk() const override { return _clk; }
@@ -74,39 +74,47 @@ struct cntr_stream_sys : cntr_sys
         void tick()
         {
                 auto now = static_cast< uint32_t >( _clk.now().count() );
-                asrt_cntr_assm_tick( &_asm, now );
+                asrt_cntr_assm_tick( &_assm, now );
 
-                while ( auto* req = asrt_send_req_list_next( &_asm.send_queue ) ) {
+                while ( auto* req = asrt_send_req_list_next( &_assm.send_queue ) ) {
                         if ( _disconnected ) {
-                                asrt_send_req_list_done( &_asm.send_queue, ASRT_SEND_ERR );
+                                asrt_send_req_list_done( &_assm.send_queue, ASRT_SEND_ERR );
                                 continue;
                         }
-                        auto st = _rx.write( _transport.stream(), req->chid, req->buff );
-                        asrt_send_req_list_done( &_asm.send_queue, st );
+                        std::vector< uint8_t > frame;
+                        auto                   st = _rx.encode( req->chid, req->buff, frame );
+                        if ( st == ASRT_SUCCESS )
+                                st = _transport.write( std::move( frame ) );
+                        asrt_send_req_list_done( &_assm.send_queue, st );
                 }
         }
 
         void start()
         {
-                auto* loop = _transport.stream()->loop;
-                uv_idle_init( loop, &_idle_handle );
+                uv_idle_init( _transport.loop(), &_idle_handle );
                 _idle_handle.data = this;
                 uv_idle_start( &_idle_handle, []( uv_idle_t* h ) {
                         static_cast< cntr_stream_sys* >( h->data )->tick();
                 } );
-                _rx.start(
-                    _transport.stream(), &_asm.cntr.node, "asrtio_cntr", [this]( ssize_t nread ) {
-                            if ( nread == UV_EOF )
-                                    ASRT_DBG_LOG( "asrtio_main", "Connection closed by remote" );
-                            else
-                                    ASRT_ERR_LOG(
-                                        "asrtio_main",
-                                        "Read error: %s",
-                                        uv_strerror( static_cast< int >( nread ) ) );
-                            ASRT_INF_LOG(
-                                "asrtio_main", "Stopping cntr_stream_sys and closing connection" );
-                            disconnect();
-                    } );
+                auto on_error = [this]( ssize_t nread ) {
+                        if ( nread == UV_EOF )
+                                ASRT_DBG_LOG( "asrtio_main", "Connection closed by remote" );
+                        else
+                                ASRT_ERR_LOG(
+                                    "asrtio_main",
+                                    "Read error: %s",
+                                    uv_strerror( static_cast< int >( nread ) ) );
+                        ASRT_INF_LOG(
+                            "asrtio_main", "Stopping cntr_stream_sys and closing connection" );
+                        disconnect();
+                };
+                _rx.init( &_assm.cntr.node, "asrtio_cntr", on_error );
+                _transport.start_read(
+                    "asrtio_cntr",
+                    [this]( std::span< uint8_t > data ) {
+                            _rx.on_data( data );
+                    },
+                    on_error );
         }
 
         void disconnect()
@@ -117,40 +125,40 @@ struct cntr_stream_sys : cntr_sys
                 _transport.close();
         }
 
-        asrt_controller& cntr() override { return _asm.cntr; }
+        asrt_controller& cntr() override { return _assm.cntr; }
 
         asrt::stream_schemas stream_take() override
         {
-                return asrt::stream_schemas{ asrt_stream_server_take( &_asm.stream ) };
+                return asrt::stream_schemas{ asrt_stream_server_take( &_assm.stream ) };
         }
 
         asrt_flat_tree const* collect_tree() override
         {
-                return asrt_collect_server_tree( &_asm.collect );
+                return asrt_collect_server_tree( &_assm.collect );
         }
 
-        asrt_cntr_assm& assembly() override { return _asm; }
+        asrt_cntr_assm& assembly() override { return _assm; }
 
         template < typename T >
         friend task< void > async_destroy( task_ctx&, cntr_stream_sys< T >& );
 
 private:
-        bool         _disconnected = false;
-        uv_idle_t    _idle_handle;
-        Transport    _transport;
-        clock const& _clk;
-        asrt_cntr_assm _asm;
-        cobs_node _rx;
+        bool           _disconnected = false;
+        uv_idle_t      _idle_handle;
+        Transport      _transport;
+        clock const&   _clk;
+        asrt_cntr_assm _assm;
+        cobs_node      _rx;
 };
 
 template < typename T >
 inline task< void > async_destroy( task_ctx&, cntr_stream_sys< T >& sys )
 {
         uv_idle_stop( &sys._idle_handle );
-        asrt_cntr_assm_deinit( &sys._asm );
+        asrt_cntr_assm_deinit( &sys._assm );
         co_await uv_close_handle{ (uv_handle_t*) &sys._idle_handle };
         if ( !sys._disconnected )
-                co_await uv_close_handle{ (uv_handle_t*) sys._transport.stream() };
+                co_await uv_close_handle{ sys._transport.stop() };
 }
 
 struct suite_reporter

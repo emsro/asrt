@@ -2593,8 +2593,7 @@ TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: char[8] define + emit" )
 
         CHECK_EQ( 8U, schema_t::emit_size );
 
-        char val[8]{};
-        std::strncpy( val, "hello", sizeof( val ) - 1 );
+        char val[8] = "hello";
         CHECK_EQ( ASRT_SUCCESS, schema.emit( val, {} ) );
         tick_client();
 
@@ -2619,8 +2618,7 @@ TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: uint32_t + char[16] multi-field" 
 
         CHECK_EQ( 20U, schema_t::emit_size );  // 4 + 16
 
-        char name[16]{};
-        std::strncpy( name, "current", sizeof( name ) - 1 );
+        char name[16] = "current";
         CHECK_EQ( ASRT_SUCCESS, schema.emit( 42U, name, {} ) );
         tick_client();
 

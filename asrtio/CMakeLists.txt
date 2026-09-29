@@ -10,8 +10,16 @@ add_library(asrtio_lib util.cpp param_config.cpp transport.cpp
                        cntr_stream_sys.cpp log_sink.cpp run_session.cpp)
 target_compile_features(asrtio_lib PUBLIC cxx_std_20)
 target_include_directories(asrtio_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv ecor
+target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv_a ecor
                                         nlohmann_json::nlohmann_json)
+if(WIN32)
+  target_sources(asrtio_lib PRIVATE serial_win.cpp)
+  # <windows.h> must not define min/max macros, nor pull in the old winsock.h
+  # that clashes with the winsock2.h libuv includes.
+  target_compile_definitions(asrtio_lib PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+else()
+  target_sources(asrtio_lib PRIVATE serial_posix.cpp)
+endif()
 
 add_executable(asrtio main.cpp)
 target_link_libraries(asrtio PUBLIC asrtio_lib CLI11::CLI11)

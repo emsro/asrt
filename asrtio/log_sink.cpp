@@ -44,7 +44,11 @@ std::string plain_log_line(
         struct tm ti
         {
         };
+#ifdef _WIN32
+        localtime_s( &ti, &now_t );
+#else
         localtime_r( &now_t, &ti );
+#endif
         char ts[16];
         std::snprintf(
             ts,

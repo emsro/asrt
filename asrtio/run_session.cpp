@@ -68,7 +68,7 @@ task< void > run_rsim(
                 ASRT_ERR_LOG( "asrtio", "uv_tcp_init failed: %s", uv_strerror( r ) );
                 co_await ecor::just_error( ASRT_INIT_ERR );
         }
-        co_await tcp_connect{ { client.get(), "0.0.0.0", rs->port() } };
+        co_await tcp_connect{ { client.get(), "127.0.0.1", rs->port() } };
         auto sys = arena.make< cntr_tcp_sys >( tcp_transport{ client }, clk );
         sys->start();
 

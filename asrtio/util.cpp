@@ -18,6 +18,54 @@
 namespace asrtio
 {
 
+void start_stream_read( uv_stream_t* client, stream_reader& reader )
+{
+        client->data = &reader;
+        uv_read_start(
+            client,
+            []( uv_handle_t*, size_t suggested_size, uv_buf_t* buf ) {
+                    buf->base = new char[suggested_size];
+                    buf->len  = suggested_size;
+            },
+            []( uv_stream_t* h, ssize_t nread, uv_buf_t const* buf ) {
+                    auto& r = *static_cast< stream_reader* >( h->data );
+                    if ( nread == UV_EOF ) {
+                            ASRT_DBG_LOG( r.module, "Connection closed" );
+                            r.on_error( nread );
+                    } else if ( nread < 0 ) {
+                            ASRT_ERR_LOG(
+                                r.module,
+                                "Read error: %s",
+                                uv_strerror( static_cast< int >( nread ) ) );
+                            r.on_error( nread );
+                    } else {
+                            r.on_data(
+                                std::span< uint8_t >{ (uint8_t*) buf->base, (std::size_t) nread } );
+                    }
+                    delete[] buf->base;
+            } );
+}
+
+asrt::status write_stream( uv_stream_t* client, std::vector< uint8_t > data )
+{
+        struct write_req
+        {
+                uv_write_t             req;
+                std::vector< uint8_t > data;
+        };
+        auto*    w     = new write_req{ {}, std::move( data ) };
+        uv_buf_t wrbuf = uv_buf_init(
+            reinterpret_cast< char* >( w->data.data() ),
+            static_cast< unsigned >( w->data.size() ) );
+        w->req.data = w;
+        uv_write( &w->req, client, &wrbuf, 1, []( uv_write_t* req, int status ) {
+                if ( status )
+                        ASRT_ERR_LOG( "asrtio_main", "Error on write: %s", uv_strerror( status ) );
+                delete static_cast< write_req* >( req->data );
+        } );
+        return ASRT_SUCCESS;
+}
+
 static bool flat_tree_from_json_unsigned(
     nlohmann::json const&   j,
     asrt_flat_value_type&   type,
