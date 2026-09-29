@@ -62,6 +62,18 @@ jobs:
       - name: Test
         run: ctest --preset windows-debug
 
+      # Temporary: find which asrtio_test case hangs on Windows.
+      - name: Run asrtio_test cases one by one
+        if: always()
+        shell: bash
+        run: |
+          t=_build/windows-debug/test/asrtio_test.exe
+          "$t" --list-test-cases --no-version | tr -d '\r' | sed '1,/^=*$/d' | sed '/^=*$/,$d' > cases.txt
+          while IFS= read -r name; do
+            timeout 20 "$t" --no-version -tc="${name//,/\\,}" > out.txt 2>&1
+            echo "$? $name"
+          done < cases.txt
+
   coverage:
     runs-on: ubuntu-latest
 
