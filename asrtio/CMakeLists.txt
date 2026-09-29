@@ -14,13 +14,13 @@ target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv ecor
                                         nlohmann_json::nlohmann_json)
 find_package(Threads REQUIRED)
 target_link_libraries(asrtio_lib PUBLIC Threads::Threads)
-if(NOT WIN32)
-  target_sources(asrtio_lib PRIVATE serial_posix.cpp)
-endif()
 if(WIN32)
+  target_sources(asrtio_lib PRIVATE serial_win.cpp)
   # <windows.h> must not define min/max macros, nor pull in the old winsock.h
   # that clashes with the winsock2.h libuv includes.
   target_compile_definitions(asrtio_lib PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
+else()
+  target_sources(asrtio_lib PRIVATE serial_posix.cpp)
 endif()
 
 add_executable(asrtio main.cpp)
