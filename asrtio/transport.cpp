@@ -262,7 +262,7 @@ std::optional< serial_transport > serial_transport::open(
                 return std::nullopt;
         }
 
-        return serial_transport{ std::move( pipe ) };
+        return serial_transport{ { std::move( pipe ) } };
 }
 
 }  // namespace asrtio

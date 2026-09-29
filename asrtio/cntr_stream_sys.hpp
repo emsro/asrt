@@ -81,32 +81,40 @@ struct cntr_stream_sys : cntr_sys
                                 asrt_send_req_list_done( &_assm.send_queue, ASRT_SEND_ERR );
                                 continue;
                         }
-                        auto st = _rx.write( _transport.stream(), req->chid, req->buff );
+                        std::vector< uint8_t > frame;
+                        auto                   st = _rx.encode( req->chid, req->buff, frame );
+                        if ( st == ASRT_SUCCESS )
+                                st = _transport.write( frame );
                         asrt_send_req_list_done( &_assm.send_queue, st );
                 }
         }
 
         void start()
         {
-                auto* loop = _transport.stream()->loop;
-                uv_idle_init( loop, &_idle_handle );
+                uv_idle_init( _transport.loop(), &_idle_handle );
                 _idle_handle.data = this;
                 uv_idle_start( &_idle_handle, []( uv_idle_t* h ) {
                         static_cast< cntr_stream_sys* >( h->data )->tick();
                 } );
-                _rx.start(
-                    _transport.stream(), &_assm.cntr.node, "asrtio_cntr", [this]( ssize_t nread ) {
-                            if ( nread == UV_EOF )
-                                    ASRT_DBG_LOG( "asrtio_main", "Connection closed by remote" );
-                            else
-                                    ASRT_ERR_LOG(
-                                        "asrtio_main",
-                                        "Read error: %s",
-                                        uv_strerror( static_cast< int >( nread ) ) );
-                            ASRT_INF_LOG(
-                                "asrtio_main", "Stopping cntr_stream_sys and closing connection" );
-                            disconnect();
-                    } );
+                auto on_error = [this]( ssize_t nread ) {
+                        if ( nread == UV_EOF )
+                                ASRT_DBG_LOG( "asrtio_main", "Connection closed by remote" );
+                        else
+                                ASRT_ERR_LOG(
+                                    "asrtio_main",
+                                    "Read error: %s",
+                                    uv_strerror( static_cast< int >( nread ) ) );
+                        ASRT_INF_LOG(
+                            "asrtio_main", "Stopping cntr_stream_sys and closing connection" );
+                        disconnect();
+                };
+                _rx.init( &_assm.cntr.node, "asrtio_cntr", on_error );
+                _transport.start_read(
+                    "asrtio_cntr",
+                    [this]( std::span< uint8_t > data ) {
+                            _rx.on_data( data );
+                    },
+                    on_error );
         }
 
         void disconnect()
@@ -150,7 +158,7 @@ inline task< void > async_destroy( task_ctx&, cntr_stream_sys< T >& sys )
         asrt_cntr_assm_deinit( &sys._assm );
         co_await uv_close_handle{ (uv_handle_t*) &sys._idle_handle };
         if ( !sys._disconnected )
-                co_await uv_close_handle{ (uv_handle_t*) sys._transport.stream() };
+                co_await uv_close_handle{ sys._transport.handle() };
 }
 
 struct suite_reporter

@@ -18,6 +18,50 @@
 namespace asrtio
 {
 
+void start_stream_read( uv_stream_t* client, stream_reader& reader )
+{
+        client->data = &reader;
+        uv_read_start(
+            client,
+            []( uv_handle_t*, size_t suggested_size, uv_buf_t* buf ) {
+                    buf->base = new char[suggested_size];
+                    buf->len  = suggested_size;
+            },
+            []( uv_stream_t* h, ssize_t nread, uv_buf_t const* buf ) {
+                    auto& r = *static_cast< stream_reader* >( h->data );
+                    if ( nread == UV_EOF ) {
+                            ASRT_DBG_LOG( r.module, "Connection closed" );
+                            r.on_error( nread );
+                    } else if ( nread < 0 ) {
+                            ASRT_ERR_LOG(
+                                r.module,
+                                "Read error: %s",
+                                uv_strerror( static_cast< int >( nread ) ) );
+                            r.on_error( nread );
+                    } else {
+                            r.on_data(
+                                std::span< uint8_t >{ (uint8_t*) buf->base, (std::size_t) nread } );
+                    }
+                    delete[] buf->base;
+            } );
+}
+
+asrt::status write_stream( uv_stream_t* client, std::span< uint8_t const > data )
+{
+        auto* copy = new uint8_t[data.size()];
+        std::memcpy( copy, data.data(), data.size() );
+        auto* req      = new uv_write_t{};
+        req->data      = copy;
+        uv_buf_t wrbuf = uv_buf_init( (char*) copy, static_cast< unsigned >( data.size() ) );
+        uv_write( req, client, &wrbuf, 1, []( uv_write_t* req, int status ) {
+                if ( status )
+                        ASRT_ERR_LOG( "asrtio_main", "Error on write: %s", uv_strerror( status ) );
+                delete[] static_cast< uint8_t* >( req->data );
+                delete req;
+        } );
+        return ASRT_SUCCESS;
+}
+
 static bool flat_tree_from_json_unsigned(
     nlohmann::json const&   j,
     asrt_flat_value_type&   type,

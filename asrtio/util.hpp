@@ -26,6 +26,7 @@
 #include <nlohmann/json.hpp>
 #include <span>
 #include <uv.h>
+#include <vector>
 
 namespace asrtio
 {
@@ -44,6 +45,20 @@ struct steady_clock : clock
         }
 };
 
+/// Callbacks for the bytes read from a libuv stream.
+struct stream_reader
+{
+        std::function< void( std::span< uint8_t > ) > on_data;
+        std::function< void( ssize_t ) >              on_error;
+        char const*                                   module = "asrtio";
+};
+
+/// Start reading @p client into @p reader, which must stay valid while reading.
+void start_stream_read( uv_stream_t* client, stream_reader& reader );
+
+/// Write a copy of @p data to @p client.
+asrt::status write_stream( uv_stream_t* client, std::span< uint8_t const > data );
+
 struct cobs_node
 {
         asrt_node*                       node;
@@ -51,9 +66,22 @@ struct cobs_node
         uint8_t                          ibuffer[4096];
         char const*                      module = "asrtio";
         std::function< void( ssize_t ) > on_error;
+        stream_reader                    reader;
 
-        asrt::status write( uv_stream_t* client, asrt::chann_id id, asrt_rec_span const& buff )
-            const
+        void init( asrt_node* node, char const* mod, std::function< void( ssize_t ) > on_error )
+        {
+                asrt_cobs_ibuffer_init(
+                    &recv, ( struct asrt_span ){ .b = ibuffer, .e = ibuffer + sizeof ibuffer } );
+                this->node     = node;
+                this->module   = mod;
+                this->on_error = std::move( on_error );
+        }
+
+        /// COBS-encode the channel header followed by @p buff into @p frame.
+        asrt::status encode(
+            asrt::chann_id          id,
+            asrt_rec_span const&    buff,
+            std::vector< uint8_t >& frame ) const
         {
                 uint8_t  hdr_buf[2];
                 uint8_t* pp = hdr_buf;
@@ -75,28 +103,22 @@ struct cobs_node
                         ASRT_ERR_LOG( module, "COBS encoding failed: %s", asrt_status_to_str( s ) );
                         return ASRT_SEND_ERR;
                 }
-
-                auto* data = new uint8_t[sp.e - sp.b];
-                memcpy( data, sp.b, sp.e - sp.b );
                 ASRT_DBG_LOG(
                     module,
                     "Sending to channel %u: %zu bytes encoded",
                     id,
                     (size_t) ( sp.e - sp.b ) );
-
-                auto* req      = new uv_write_t{};
-                req->data      = data;
-                uv_buf_t wrbuf = uv_buf_init( (char*) data, sp.e - sp.b );
-                uv_write( req, client, &wrbuf, 1, []( uv_write_t* req, int status ) {
-                        if ( status ) {
-                                ASRT_ERR_LOG(
-                                    "asrtio_main", "Error on write: %s", uv_strerror( status ) );
-                        }
-
-                        delete[] static_cast< uint8_t* >( req->data );
-                        delete req;
-                } );
+                frame.assign( sp.b, sp.e );
                 return ASRT_SUCCESS;
+        }
+
+        asrt::status write( uv_stream_t* client, asrt::chann_id id, asrt_rec_span const& buff )
+            const
+        {
+                std::vector< uint8_t > frame;
+                if ( auto s = encode( id, buff, frame ); s != ASRT_SUCCESS )
+                        return s;
+                return write_stream( client, frame );
         }
 
         void on_data( std::span< uint8_t > data )
@@ -118,35 +140,18 @@ struct cobs_node
             char const*                      mod,
             std::function< void( ssize_t ) > on_error )
         {
-                asrt_cobs_ibuffer_init(
-                    &recv, ( struct asrt_span ){ .b = ibuffer, .e = ibuffer + sizeof ibuffer } );
-                this->node     = node;
-                this->module   = mod;
-                this->on_error = std::move( on_error );
-                client->data   = this;
-                uv_read_start(
-                    client,
-                    []( uv_handle_t*, size_t suggested_size, uv_buf_t* buf ) {
-                            buf->base = new char[suggested_size];
-                            buf->len  = suggested_size;
-                    },
-                    []( uv_stream_t* h, ssize_t nread, uv_buf_t const* buf ) {
-                            auto& self = *static_cast< cobs_node* >( h->data );
-                            if ( nread == UV_EOF ) {
-                                    ASRT_DBG_LOG( self.module, "Connection closed" );
-                                    self.on_error( nread );
-                            } else if ( nread < 0 ) {
-                                    ASRT_ERR_LOG(
-                                        self.module,
-                                        "Read error: %s",
-                                        uv_strerror( static_cast< int >( nread ) ) );
-                                    self.on_error( nread );
-                            } else {
-                                    self.on_data( std::span< uint8_t >{
-                                        (uint8_t*) buf->base, (std::size_t) nread } );
-                            }
-                            delete[] buf->base;
-                    } );
+                init( node, mod, std::move( on_error ) );
+                reader = stream_reader{
+                    .on_data =
+                        [this]( std::span< uint8_t > data ) {
+                                on_data( data );
+                        },
+                    .on_error =
+                        [this]( ssize_t nread ) {
+                                this->on_error( nread );
+                        },
+                    .module = module };
+                start_stream_read( client, reader );
         }
 };
 

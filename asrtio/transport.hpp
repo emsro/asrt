@@ -10,7 +10,10 @@
 /// PERFORMANCE OF THIS SOFTWARE.
 #pragma once
 
+#include "./util.hpp"
+
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -69,6 +72,45 @@ struct serial_config
 int open_serial_port( serial_config const& cfg, std::string& errmsg );
 
 // ---------------------------------------------------------------------------
+// uv_stream_transport
+//
+// Byte transport over a libuv stream handle (uv_tcp_t, uv_pipe_t), as used by
+// cntr_stream_sys: start_read, write, close, and handle() for the final
+// awaited close.
+// ---------------------------------------------------------------------------
+
+template < typename H >
+struct uv_stream_transport
+{
+        std::shared_ptr< H >             h;
+        std::unique_ptr< stream_reader > reader = {};
+
+        uv_loop_t* loop() const { return h->loop; }
+
+        void start_read(
+            char const*                                   module,
+            std::function< void( std::span< uint8_t > ) > on_data,
+            std::function< void( ssize_t ) >              on_error )
+        {
+                reader = std::make_unique< stream_reader >(
+                    stream_reader{ std::move( on_data ), std::move( on_error ), module } );
+                start_stream_read( stream(), *reader );
+        }
+
+        asrt::status write( std::span< uint8_t const > data )
+        {
+                return write_stream( stream(), data );
+        }
+
+        uv_handle_t* handle() const { return reinterpret_cast< uv_handle_t* >( h.get() ); }
+
+        void close() { uv_close( handle(), nullptr ); }
+
+private:
+        uv_stream_t* stream() const { return reinterpret_cast< uv_stream_t* >( h.get() ); }
+};
+
+// ---------------------------------------------------------------------------
 // tcp_transport
 //
 // Wraps a connected uv_tcp_t. The caller is responsible for constructing
@@ -76,14 +118,7 @@ int open_serial_port( serial_config const& cfg, std::string& errmsg );
 // before constructing this transport.
 // ---------------------------------------------------------------------------
 
-struct tcp_transport
-{
-        std::shared_ptr< uv_tcp_t > client;
-
-        uv_stream_t* stream() { return reinterpret_cast< uv_stream_t* >( client.get() ); }
-
-        void close() { uv_close( reinterpret_cast< uv_handle_t* >( client.get() ), nullptr ); }
-};
+using tcp_transport = uv_stream_transport< uv_tcp_t >;
 
 // ---------------------------------------------------------------------------
 // serial_transport
@@ -93,20 +128,14 @@ struct tcp_transport
 // the transport is movable and the pipe address stays stable.
 // ---------------------------------------------------------------------------
 
-struct serial_transport
+struct serial_transport : uv_stream_transport< uv_pipe_t >
 {
-        std::shared_ptr< uv_pipe_t > pipe;
-
         // Factory function — no exceptions.  Returns nullopt on failure;
         // errmsg is populated with a human-readable description.
         static std::optional< serial_transport > open(
             uv_loop_t*           loop,
             serial_config const& cfg,
             std::string&         errmsg );
-
-        uv_stream_t* stream() { return reinterpret_cast< uv_stream_t* >( pipe.get() ); }
-
-        void close() { uv_close( reinterpret_cast< uv_handle_t* >( pipe.get() ), nullptr ); }
 };
 
 }  // namespace asrtio
