@@ -358,7 +358,8 @@ private:
                         return;
                 }
                 for ( auto& data : tx )
-                        write_stream( reinterpret_cast< uv_stream_t* >( &_pipe ), data );
+                        write_stream(
+                            reinterpret_cast< uv_stream_t* >( &_pipe ), std::move( data ) );
         }
 
         uv_loop_t                             _loop;

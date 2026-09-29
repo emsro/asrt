@@ -56,8 +56,8 @@ struct stream_reader
 /// Start reading @p client into @p reader, which must stay valid while reading.
 void start_stream_read( uv_stream_t* client, stream_reader& reader );
 
-/// Write a copy of @p data to @p client.
-asrt::status write_stream( uv_stream_t* client, std::span< uint8_t const > data );
+/// Write @p data to @p client; the vector is kept alive until the write completes.
+asrt::status write_stream( uv_stream_t* client, std::vector< uint8_t > data );
 
 struct cobs_node
 {
@@ -93,10 +93,10 @@ struct cobs_node
                     .e    = hdr_buf + 2,
                     .next = const_cast< struct asrt_rec_span* >( &buff ) };
 
-                uint8_t buffer[1024];
+                frame.resize( 1024 );
                 struct asrt_span sp
                 {
-                        .b = buffer, .e = buffer + sizeof buffer
+                        .b = frame.data(), .e = frame.data() + frame.size()
                 };
                 auto s = asrt_cobs_encode_buffer( &hdr_span, &sp );
                 if ( s != ASRT_SUCCESS ) {
@@ -108,7 +108,7 @@ struct cobs_node
                     "Sending to channel %u: %zu bytes encoded",
                     id,
                     (size_t) ( sp.e - sp.b ) );
-                frame.assign( sp.b, sp.e );
+                frame.resize( static_cast< std::size_t >( sp.e - sp.b ) );
                 return ASRT_SUCCESS;
         }
 
@@ -118,7 +118,7 @@ struct cobs_node
                 std::vector< uint8_t > frame;
                 if ( auto s = encode( id, buff, frame ); s != ASRT_SUCCESS )
                         return s;
-                return write_stream( client, frame );
+                return write_stream( client, std::move( frame ) );
         }
 
         void on_data( std::span< uint8_t > data )

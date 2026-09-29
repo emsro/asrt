@@ -105,11 +105,11 @@ void serial_transport::start_read(
         uv_async_send( &_s->async );
 }
 
-asrt::status serial_transport::write( std::span< uint8_t const > data )
+asrt::status serial_transport::write( std::vector< uint8_t > data )
 {
         if ( !_s->worker )
                 return ASRT_SEND_ERR;
-        _s->worker->write( std::vector< uint8_t >( data.begin(), data.end() ) );
+        _s->worker->write( std::move( data ) );
         return ASRT_SUCCESS;
 }
 

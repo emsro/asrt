@@ -84,7 +84,7 @@ struct cntr_stream_sys : cntr_sys
                         std::vector< uint8_t > frame;
                         auto                   st = _rx.encode( req->chid, req->buff, frame );
                         if ( st == ASRT_SUCCESS )
-                                st = _transport.write( frame );
+                                st = _transport.write( std::move( frame ) );
                         asrt_send_req_list_done( &_assm.send_queue, st );
                 }
         }

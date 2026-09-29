@@ -134,9 +134,9 @@ struct uv_stream_transport
                 start_stream_read( stream(), *reader );
         }
 
-        asrt::status write( std::span< uint8_t const > data )
+        asrt::status write( std::vector< uint8_t > data )
         {
-                return write_stream( stream(), data );
+                return write_stream( stream(), std::move( data ) );
         }
 
         /// Stop activity and return the handle whose close completes shutdown.
@@ -183,7 +183,7 @@ public:
             std::function< void( std::span< uint8_t > ) > on_data,
             std::function< void( ssize_t ) >              on_error );
 
-        asrt::status write( std::span< uint8_t const > data );
+        asrt::status write( std::vector< uint8_t > data );
 
         /// Stop the worker thread and return the handle whose close completes shutdown.
         uv_handle_t* stop();

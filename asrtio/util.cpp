@@ -46,18 +46,22 @@ void start_stream_read( uv_stream_t* client, stream_reader& reader )
             } );
 }
 
-asrt::status write_stream( uv_stream_t* client, std::span< uint8_t const > data )
+asrt::status write_stream( uv_stream_t* client, std::vector< uint8_t > data )
 {
-        auto* copy = new uint8_t[data.size()];
-        std::memcpy( copy, data.data(), data.size() );
-        auto* req      = new uv_write_t{};
-        req->data      = copy;
-        uv_buf_t wrbuf = uv_buf_init( (char*) copy, static_cast< unsigned >( data.size() ) );
-        uv_write( req, client, &wrbuf, 1, []( uv_write_t* req, int status ) {
+        struct write_req
+        {
+                uv_write_t             req;
+                std::vector< uint8_t > data;
+        };
+        auto*    w     = new write_req{ {}, std::move( data ) };
+        uv_buf_t wrbuf = uv_buf_init(
+            reinterpret_cast< char* >( w->data.data() ),
+            static_cast< unsigned >( w->data.size() ) );
+        w->req.data = w;
+        uv_write( &w->req, client, &wrbuf, 1, []( uv_write_t* req, int status ) {
                 if ( status )
                         ASRT_ERR_LOG( "asrtio_main", "Error on write: %s", uv_strerror( status ) );
-                delete[] static_cast< uint8_t* >( req->data );
-                delete req;
+                delete static_cast< write_req* >( req->data );
         } );
         return ASRT_SUCCESS;
 }
