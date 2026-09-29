@@ -240,7 +240,7 @@ struct _cntr_assembly_exec_test
 using cntr_assembly_exec_test = ecor::sender_from< _cntr_assembly_exec_test >;
 
 void write_strm_field( std::ostream& os, enum asrt_strm_field_type_e ft, uint8_t*& p );
-void write_strm_field( std::ostream& os, struct asrt_stream_field_desc const* desc, uint8_t*& p );
+void write_strm_field( std::ostream& os, struct asrt_stream_field_desc const& desc, uint8_t*& p );
 
 void write_stream_csv(
     output_fs&                   fs,

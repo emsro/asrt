@@ -139,57 +139,57 @@ ASRT_NODISCARD inline flat_id root_id( asrt_param_client const& client )
 /// a FIND_BY_KEY is sent; otherwise a QUERY by node_id.  Callable callback overload.
 template < has_param_query_traits T, typed_param_query_callable< T > CB >
 ASRT_NODISCARD asrt_status
-query( asrt_param_client& cl, asrt_param_query* q, flat_id node_id, char const* key, CB& cb )
+query( asrt_param_client& cl, asrt_param_query& q, flat_id node_id, char const* key, CB& cb )
 {
-        using traits     = param_query_traits< T >;
-        q->expected_type = traits::flat_type;
-        q->cb.*traits::cb_member =
+        using traits    = param_query_traits< T >;
+        q.expected_type = traits::flat_type;
+        q.cb.*traits::cb_member =
             []( asrt_param_client* c, asrt_param_query* qq, traits::raw_type raw ) {
                     ( *reinterpret_cast< CB* >( qq->cb_ptr ) )(
                         c, qq, static_cast< traits::value_type >( raw ) );
             };
-        q->cb_ptr = &cb;
-        return asrt_param_client_query( q, &cl, node_id, key );
+        q.cb_ptr = &cb;
+        return asrt_param_client_query( &q, &cl, node_id, key );
 }
 /// Submit a typed QUERY or FIND_BY_KEY.  Raw function pointer + void* context overload.
 template < has_param_query_traits T >
 ASRT_NODISCARD asrt_status query(
     asrt_param_client&                        cl,
-    asrt_param_query*                         q,
+    asrt_param_query&                         q,
     flat_id                                   node_id,
     char const*                               key,
     typename param_query_traits< T >::cb_type cb,
     void*                                     cb_ptr )
 {
-        using traits             = param_query_traits< T >;
-        q->expected_type         = traits::flat_type;
-        q->cb.*traits::cb_member = cb;
-        q->cb_ptr                = cb_ptr;
-        return asrt_param_client_query( q, &cl, node_id, key );
+        using traits            = param_query_traits< T >;
+        q.expected_type         = traits::flat_type;
+        q.cb.*traits::cb_member = cb;
+        q.cb_ptr                = cb_ptr;
+        return asrt_param_client_query( &q, &cl, node_id, key );
 }
 
 /// Submit a QUERY without type filtering.  Raw C callback + void* overload.
 ASRT_NODISCARD inline asrt_status query(
     asrt_param_client& cl,
-    asrt_param_query*  q,
+    asrt_param_query&  q,
     flat_id            node_id,
     char const*        key,
     asrt_param_any_cb  cb,
     void*              cb_ptr )
 {
-        q->expected_type = ASRT_FLAT_STYPE_NONE;
-        q->cb.any        = cb;
-        q->cb_ptr        = cb_ptr;
-        return asrt_param_client_query( q, &cl, node_id, key );
+        q.expected_type = ASRT_FLAT_STYPE_NONE;
+        q.cb.any        = cb;
+        q.cb_ptr        = cb_ptr;
+        return asrt_param_client_query( &q, &cl, node_id, key );
 }
 
 /// Fetch information about node node_id from param client, call cb with the value if
 /// successful. cb will be called even on error, with an appropriate error code in
-/// q->error_code and possibly an invalid value. T is the expected type of the value, if
+/// q.error_code and possibly an invalid value. T is the expected type of the value, if
 /// value type doesn't match, cb will be called with an error.
 template < has_param_query_traits T, typed_param_query_callable< T > CB >
 ASRT_NODISCARD asrt_status
-fetch( asrt_param_client& cl, asrt_param_query* q, flat_id node_id, CB& cb )
+fetch( asrt_param_client& cl, asrt_param_query& q, flat_id node_id, CB& cb )
 {
         return query< T >( cl, q, node_id, nullptr, cb );
 }
@@ -199,7 +199,7 @@ fetch( asrt_param_client& cl, asrt_param_query* q, flat_id node_id, CB& cb )
 template < has_param_query_traits T >
 ASRT_NODISCARD asrt_status fetch(
     asrt_param_client&                        cl,
-    asrt_param_query*                         q,
+    asrt_param_query&                         q,
     flat_id                                   node_id,
     typename param_query_traits< T >::cb_type cb,
     void*                                     cb_ptr )
@@ -210,7 +210,7 @@ ASRT_NODISCARD asrt_status fetch(
 /// Raw fetch without explicit expected type and C callback + void* context.
 ASRT_NODISCARD inline asrt_status fetch(
     asrt_param_client& cl,
-    asrt_param_query*  q,
+    asrt_param_query&  q,
     flat_id            node_id,
     asrt_param_any_cb  cb,
     void*              cb_ptr )
@@ -221,7 +221,7 @@ ASRT_NODISCARD inline asrt_status fetch(
 /// Find child with key under parent_id, call cb with the value if successful.
 template < has_param_query_traits T, typed_param_query_callable< T > CB >
 ASRT_NODISCARD asrt_status
-find( asrt_param_client& cl, asrt_param_query* q, flat_id parent_id, char const* key, CB& cb )
+find( asrt_param_client& cl, asrt_param_query& q, flat_id parent_id, char const* key, CB& cb )
 {
         return query< T >( cl, q, parent_id, key, cb );
 }
@@ -230,7 +230,7 @@ find( asrt_param_client& cl, asrt_param_query* q, flat_id parent_id, char const*
 template < has_param_query_traits T >
 ASRT_NODISCARD asrt_status find(
     asrt_param_client&                        cl,
-    asrt_param_query*                         q,
+    asrt_param_query&                         q,
     flat_id                                   parent_id,
     char const*                               key,
     typename param_query_traits< T >::cb_type cb,
@@ -242,7 +242,7 @@ ASRT_NODISCARD asrt_status find(
 /// Raw find without explicit expected type and C callback + void* context.
 ASRT_NODISCARD inline asrt_status find(
     asrt_param_client& cl,
-    asrt_param_query*  q,
+    asrt_param_query&  q,
     flat_id            parent_id,
     char const*        key,
     asrt_param_any_cb  cb,
@@ -304,7 +304,7 @@ struct _param_query_ctx
                                     q->next_sibling,
                                     q->node_id } );
                 };
-                auto s = query< T >( *client, &q, node_id, key, cb, &op );
+                auto s = query< T >( *client, q, node_id, key, cb, &op );
                 if ( s != ASRT_SUCCESS )
                         op.receiver.set_error( ASRT_RECV_ERR );
         }

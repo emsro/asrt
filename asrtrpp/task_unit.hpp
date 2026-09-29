@@ -82,20 +82,20 @@ struct task_unit_base : asrt_test
         }
 
         asrt_status base_cb(
-            record*                     rec,
+            record&                     rec,
             ecor::task_memory_resource& mem,
             T ( *cb )( task_unit_base* ) )
         {
-                if ( rec->state == ASRT_TEST_INIT ) {
-                        rec->state = ASRT_TEST_RUNNING;
-                        void* p    = mem.allocate( sizeof( op_type ), alignof( op_type ) );
+                if ( rec.state == ASRT_TEST_INIT ) {
+                        rec.state = ASRT_TEST_RUNNING;
+                        void* p   = mem.allocate( sizeof( op_type ), alignof( op_type ) );
                         _op.reset( new ( p ) op_type(
                             cb( this ).connect( task_unit_recv{ &_done_state } ) ) );
                         _op->start();
                 }
 
                 if ( _op && _done_state != ASRT_TEST_RUNNING ) {
-                        rec->state  = _done_state;
+                        rec.state   = _done_state;
                         _done_state = ASRT_TEST_RUNNING;
                         _op.reset();
                 }
@@ -138,7 +138,7 @@ struct task_unit : task_unit_base< task_unit_task_type< T > >
         {
                 auto* self = static_cast< task_unit* >( rec->inpt->test_ptr );
 
-                return self->base_cb( rec, ecor::get_memory_resource( self->_def ), []( base* b ) {
+                return self->base_cb( *rec, ecor::get_memory_resource( self->_def ), []( base* b ) {
                         auto* self = static_cast< task_unit* >( b );
                         return self->_def.exec();
                 } );

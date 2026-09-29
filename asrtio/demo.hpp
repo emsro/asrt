@@ -258,7 +258,7 @@ inline demo_spec make_demo_param_value()
                             pq = {};
                             if ( auto s = asrt::fetch< asrt::obj >(
                                      self.param,
-                                     &pq.q,
+                                     pq.q,
                                      asrt::root_id( self.param ),
                                      detail::param_obj_qr_cb,
                                      &pq );
@@ -276,7 +276,7 @@ inline demo_spec make_demo_param_value()
                             auto first = pq.first_child;
                             pq         = {};
                             if ( auto s = asrt::fetch< uint32_t >(
-                                     self.param, &pq.q, first, detail::param_u32_qr_cb, &pq );
+                                     self.param, pq.q, first, detail::param_u32_qr_cb, &pq );
                                  s != ASRT_SUCCESS ) {
                                     asrt::rec_diag(
                                         self.diag, "demo.hpp", __LINE__, "fetch failed", {} );
@@ -334,7 +334,7 @@ inline demo_spec make_demo_param_count()
                             pq = {};
                             if ( auto s = asrt::fetch< asrt::obj >(
                                      self.param,
-                                     &pq.q,
+                                     pq.q,
                                      asrt::root_id( self.param ),
                                      detail::param_obj_qr_cb,
                                      &pq );
@@ -352,7 +352,7 @@ inline demo_spec make_demo_param_count()
                             auto first = pq.first_child;
                             pq         = {};
                             if ( auto s = asrt::fetch< void >(
-                                     self.param, &pq.q, first, detail::param_any_qr_cb, &pq );
+                                     self.param, pq.q, first, detail::param_any_qr_cb, &pq );
                                  s != ASRT_SUCCESS ) {
                                     asrt::rec_diag(
                                         self.diag, "demo.hpp", __LINE__, "fetch failed", {} );
@@ -369,11 +369,7 @@ inline demo_spec make_demo_param_count()
                                     auto next = pq.next_sib;
                                     pq        = {};
                                     if ( auto s = asrt::fetch< void >(
-                                             self.param,
-                                             &pq.q,
-                                             next,
-                                             detail::param_any_qr_cb,
-                                             &pq );
+                                             self.param, pq.q, next, detail::param_any_qr_cb, &pq );
                                          s != ASRT_SUCCESS ) {
                                             asrt::rec_diag(
                                                 self.diag,
@@ -426,7 +422,7 @@ inline demo_spec make_demo_param_find()
                             pq = {};
                             if ( auto s = asrt::find< uint32_t >(
                                      self.param,
-                                     &pq.q,
+                                     pq.q,
                                      asrt::root_id( self.param ),
                                      "count",
                                      detail::param_u32_qr_cb,

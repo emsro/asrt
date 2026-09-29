@@ -470,7 +470,7 @@ TEST_CASE_FIXTURE( param_loopback_cpp_ctx, "param_cpp_loopback_traversal" )
         REQUIRE( asrt::ready( cli ) );
 
         // Query root
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, &query, 1U, query_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, query, 1U, query_cb, this ) );
         spin_query();
         REQUIRE_EQ( 1U, received.size() );
         CHECK_EQ( 1U, received[0].id );
@@ -478,7 +478,7 @@ TEST_CASE_FIXTURE( param_loopback_cpp_ctx, "param_cpp_loopback_traversal" )
         asrt::flat_id first_child = received[0].value.data.cont.first_child;
 
         // Query first child "a"
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, &query, first_child, query_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, query, first_child, query_cb, this ) );
         spin_query();
         REQUIRE_EQ( 2U, received.size() );
         CHECK_EQ( "a", received[1].key );
@@ -486,7 +486,7 @@ TEST_CASE_FIXTURE( param_loopback_cpp_ctx, "param_cpp_loopback_traversal" )
         asrt::flat_id next_sib = received[1].next_sibling;
 
         // Query next sibling "b"
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, &query, next_sib, query_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, query, next_sib, query_cb, this ) );
         spin_query();
         REQUIRE_EQ( 3U, received.size() );
         CHECK_EQ( "b", received[2].key );
@@ -509,7 +509,7 @@ TEST_CASE_FIXTURE( param_loopback_cpp_ctx, "param_cpp_error_reaches_callback" )
         REQUIRE( asrt::ready( cli ) );
 
         // Query non-existent node — server sends ERROR
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, &query, 999U, query_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch( cli, query, 999U, query_cb, this ) );
         spin_query();
 
         // The node doesn't exist, so server sends a response with NONE type
@@ -620,7 +620,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_u32_happy" )
                 cb_count++;
                 u32_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( 42U, u32_val );
@@ -640,7 +640,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_u32_mismatch" )
                 cb_count++;
                 got_null = ( q->error_code != 0 );
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK( got_null );
@@ -659,7 +659,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_i32_happy" )
                 cb_count++;
                 i32_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< int32_t >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< int32_t >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( -7, i32_val );
@@ -680,7 +680,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_str_happy" )
                 if ( v )
                         str_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< char const* >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< char const* >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( "hello", str_val );
@@ -700,7 +700,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_float_happy" )
                 cb_count++;
                 flt_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< float >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< float >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( doctest::Approx( 3.14F ), flt_val );
@@ -720,7 +720,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_query_any_happy" )
                 u32_val = v.data.s.u32_val;
         };
         // untyped query — explicit asrt_flat_value
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< asrt_flat_value >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< asrt_flat_value >( cli, query, 2U, cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( 99U, u32_val );
@@ -741,7 +741,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "query_pending_cpp" )
                 cb_count++;
                 u32_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, &query, 2U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, query, 2U, cb ) );
         CHECK( asrt::query_pending( cli ) );
 
         spin_query();
@@ -795,7 +795,7 @@ TEST_CASE( "param_client_cpp_timeout" )
                 err = q->error_code;
         };
         asrt_param_query query = {};
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, &query, 10U, cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, query, 10U, cb ) );
 
         // DELIVER tick → wire
         CHECK_EQ( ASRT_SUCCESS, asrt::tick( asrt::node( cli ), 100 ) );
@@ -836,7 +836,7 @@ TEST_CASE_FIXTURE( param_loopback_cpp_ctx, "param_cpp_find_by_key_raw" )
         REQUIRE( asrt::ready( cli ) );
 
         // Find "b" by key using raw callback
-        CHECK_EQ( ASRT_SUCCESS, asrt::find( cli, &query, 1U, "b", query_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::find( cli, query, 1U, "b", query_cb, this ) );
         spin_query();
         REQUIRE_EQ( 1U, received.size() );
         CHECK_EQ( 3U, received[0].id );
@@ -861,7 +861,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_find_u32_happy" )
                 cb_count++;
                 u32_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, &query, 1U, "val", cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, query, 1U, "val", cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( 42U, u32_val );
@@ -882,7 +882,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_find_str_happy" )
                 if ( v )
                         str_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::find< char const* >( cli, &query, 1U, "val", cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::find< char const* >( cli, query, 1U, "val", cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( "world", str_val );
@@ -901,7 +901,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_find_not_found" )
                 cb_count++;
                 got_null = ( q->error_code != 0 );
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, &query, 1U, "missing", cb ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, query, 1U, "missing", cb ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK( got_null );
@@ -921,7 +921,7 @@ TEST_CASE_FIXTURE( typed_loopback_ctx, "typed_find_c_callback" )
                 ctx->cb_count++;
                 ctx->u32_val = v;
         };
-        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, &query, 1U, "val", c_cb, this ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::find< uint32_t >( cli, query, 1U, "val", c_cb, this ) );
         spin_query();
         CHECK_EQ( 1, cb_count );
         CHECK_EQ( 55U, u32_val );
@@ -1715,7 +1715,7 @@ TEST_CASE_FIXTURE( param_sender_ctx, "ps_param_query_pending" )
         // Start a raw query to occupy the pending slot
         asrt_param_query q  = {};
         auto             cb = []( asrt_param_client*, asrt_param_query*, uint32_t ) {};
-        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, &q, 2U, cb, nullptr ) );
+        CHECK_EQ( ASRT_SUCCESS, asrt::fetch< uint32_t >( cli, q, 2U, cb, nullptr ) );
         CHECK( asrt::query_pending( cli ) );
 
         // Now a param sender should fail because a query is already pending

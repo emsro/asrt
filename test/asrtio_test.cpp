@@ -522,7 +522,7 @@ static asrtio::task< void > param_e2e_coro(
         REQUIRE_EQ(
             ASRT_SUCCESS,
             asrt::fetch(
-                conn.assm.param, &state.query, state.root_id, param_e2e_state::query_cb, &state ) );
+                conn.assm.param, state.query, state.root_id, param_e2e_state::query_cb, &state ) );
 
         while ( state.received.empty() )
                 co_await ecor::suspend;
@@ -532,7 +532,7 @@ static asrtio::task< void > param_e2e_coro(
                     ASRT_SUCCESS,
                     asrt::fetch(
                         conn.assm.param,
-                        &state.query,
+                        state.query,
                         state.received[0].value.data.cont.first_child,
                         param_e2e_state::query_cb,
                         &state ) );
@@ -546,7 +546,7 @@ static asrtio::task< void > param_e2e_coro(
                     ASRT_SUCCESS,
                     asrt::fetch(
                         conn.assm.param,
-                        &state.query,
+                        state.query,
                         state.received[1].next_sibling,
                         param_e2e_state::query_cb,
                         &state ) );
