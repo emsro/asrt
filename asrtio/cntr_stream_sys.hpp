@@ -158,7 +158,7 @@ inline task< void > async_destroy( task_ctx&, cntr_stream_sys< T >& sys )
         asrt_cntr_assm_deinit( &sys._assm );
         co_await uv_close_handle{ (uv_handle_t*) &sys._idle_handle };
         if ( !sys._disconnected )
-                co_await uv_close_handle{ sys._transport.handle() };
+                co_await uv_close_handle{ sys._transport.stop() };
 }
 
 struct suite_reporter

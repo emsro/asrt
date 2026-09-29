@@ -2136,10 +2136,12 @@ TEST_CASE( "serial_open_bad_path" )
         asrtio::serial_config cfg;
         cfg.path = "/dev/this-does-not-exist";
 
+        uv_loop_t loop;
+        uv_loop_init( &loop );
         std::string errmsg;
-        int         fd = asrtio::open_serial_port( cfg, errmsg );
-        CHECK_EQ( fd, -1 );
+        CHECK_FALSE( asrtio::serial_transport::open( &loop, cfg, errmsg ) );
         CHECK_FALSE( errmsg.empty() );
+        CHECK_EQ( uv_loop_close( &loop ), 0 );
 }
 
 // ---------------------------------------------------------------------------

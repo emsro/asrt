@@ -65,17 +65,49 @@ struct serial_config
 // human-readable description.
 // ---------------------------------------------------------------------------
 
-#if defined( _WIN32 )
-#error "open_serial_port: Windows serial (win_serial_transport) is not yet implemented"
+#if !defined( _WIN32 )
+int open_serial_port( serial_config const& cfg, std::string& errmsg );
 #endif
 
-int open_serial_port( serial_config const& cfg, std::string& errmsg );
+// ---------------------------------------------------------------------------
+// serial_worker
+//
+// Owns an open serial port and the thread that reads from it and writes to
+// it. One implementation per platform: serial_posix.cpp (libuv) and
+// serial_win.cpp (Win32).
+// ---------------------------------------------------------------------------
+
+struct serial_worker
+{
+        /// Receives what the worker reads; called on the worker thread.
+        struct sink
+        {
+                virtual void on_rx( std::span< uint8_t const > data ) = 0;
+                /// @p err is a negative libuv error code; UV_EOF when the port closes.
+                virtual void on_fail( int err ) = 0;
+                virtual ~sink()                 = default;
+        };
+
+        /// Start the thread; @p s must outlive the worker.
+        virtual void start( sink& s ) = 0;
+
+        /// Queue @p data for sending; callable from any thread.
+        virtual void write( std::vector< uint8_t > data ) = 0;
+
+        /// Stops the thread and closes the port.
+        virtual ~serial_worker() = default;
+};
+
+/// Open and configure the port. Returns nullptr on failure, with errmsg populated.
+std::unique_ptr< serial_worker > open_serial_worker(
+    serial_config const& cfg,
+    std::string&         errmsg );
 
 // ---------------------------------------------------------------------------
 // uv_stream_transport
 //
 // Byte transport over a libuv stream handle (uv_tcp_t, uv_pipe_t), as used by
-// cntr_stream_sys: start_read, write, close, and handle() for the final
+// cntr_stream_sys: start_read, write, close, and stop() for the final
 // awaited close.
 // ---------------------------------------------------------------------------
 
@@ -102,9 +134,10 @@ struct uv_stream_transport
                 return write_stream( stream(), data );
         }
 
-        uv_handle_t* handle() const { return reinterpret_cast< uv_handle_t* >( h.get() ); }
+        /// Stop activity and return the handle whose close completes shutdown.
+        uv_handle_t* stop() { return reinterpret_cast< uv_handle_t* >( h.get() ); }
 
-        void close() { uv_close( handle(), nullptr ); }
+        void close() { uv_close( stop(), nullptr ); }
 
 private:
         uv_stream_t* stream() const { return reinterpret_cast< uv_stream_t* >( h.get() ); }
@@ -123,19 +156,44 @@ using tcp_transport = uv_stream_transport< uv_tcp_t >;
 // ---------------------------------------------------------------------------
 // serial_transport
 //
-// Use the static open() factory to construct. Returns nullopt on failure
-// with errmsg populated.  The underlying uv_pipe_t is heap-allocated so
-// the transport is movable and the pipe address stays stable.
+// Serial I/O runs on a serial_worker thread. Received bytes are queued and
+// handed to the loop thread through a uv_async_t; writes are queued to the
+// worker. Use the static open() factory to construct.
 // ---------------------------------------------------------------------------
 
-struct serial_transport : uv_stream_transport< uv_pipe_t >
+class serial_transport
 {
+public:
         // Factory function — no exceptions.  Returns nullopt on failure;
         // errmsg is populated with a human-readable description.
         static std::optional< serial_transport > open(
             uv_loop_t*           loop,
             serial_config const& cfg,
             std::string&         errmsg );
+
+        uv_loop_t* loop() const;
+
+        void start_read(
+            char const*                                   module,
+            std::function< void( std::span< uint8_t > ) > on_data,
+            std::function< void( ssize_t ) >              on_error );
+
+        asrt::status write( std::span< uint8_t const > data );
+
+        /// Stop the worker thread and return the handle whose close completes shutdown.
+        uv_handle_t* stop();
+
+        void close();
+
+private:
+        struct state;
+
+        explicit serial_transport( std::shared_ptr< state > s )
+          : _s( std::move( s ) )
+        {
+        }
+
+        std::shared_ptr< state > _s;
 };
 
 }  // namespace asrtio
