@@ -45,6 +45,7 @@ CheckOptions:
   readability-identifier-naming.MemberCase: lower_case
   readability-identifier-naming.MemberPrefix: ""
   readability-identifier-naming.PrivateMemberPrefix: _
+  readability-identifier-naming.ProtectedMemberPrefix: _
   readability-identifier-naming.ParameterCase: lower_case
   readability-identifier-naming.FunctionCase: lower_case
   readability-identifier-naming.LocalConstantCase: lower_case

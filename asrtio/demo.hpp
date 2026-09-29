@@ -699,7 +699,7 @@ struct nested_find_demo_task : asrt::task_test
                 auto b = co_await asrt::find< uint32_t >( pc, container.node_id, "b" );
                 auto c = co_await asrt::find< uint32_t >( pc, container.node_id, "c" );
 
-                if ( a != 1u || b != 2u || c != 3u )
+                if ( a != 1U || b != 2U || c != 3U )
                         co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };

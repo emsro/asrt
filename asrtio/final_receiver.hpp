@@ -58,7 +58,7 @@ struct final_receiver
         }
 
 private:
-        void clear_bar()
+        void clear_bar() const
         {
                 if ( active_bar )
                         *active_bar = nullptr;

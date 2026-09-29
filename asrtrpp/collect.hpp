@@ -93,7 +93,7 @@ ASRT_NODISCARD inline flat_id root_id( asrt_collect_client const& cc )
 }
 
 /// Sender that appends a single node to the collect client's tree.
-inline asrt_flat_value _make_collect_scalar_value( auto val, auto member, auto type )
+inline asrt_flat_value make_collect_scalar_value( auto val, auto member, auto type )
 {
         using member_type = decltype( asrt_flat_scalar{}.*member );
         asrt_flat_value v = { .type = static_cast< asrt_flat_value_type >( type ) };
@@ -194,7 +194,7 @@ ecor::sender auto set( asrt_collect_client& cc, flat_id parent, char const* key,
             { &cc,
               parent,
               key,
-              _make_collect_scalar_value( val, traits::member, traits::flat_type ) } };
+              make_collect_scalar_value( val, traits::member, traits::flat_type ) } };
 }
 
 /// Scalar append without key (array child): append<uint32_t>(parent, 42).
