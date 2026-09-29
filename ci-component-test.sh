@@ -11,7 +11,7 @@ set -e
 
 REPO_ROOT=$(cd "$(dirname "$0")" && pwd)
 PREFIX=${1:-/tmp/asrt-component-test-install}
-BUILD_DIR=${2:-${REPO_ROOT}/_build}
+BUILD_DIR=${2:-${REPO_ROOT}/_build/release-c}
 
 echo "=== Installing from ${BUILD_DIR} to ${PREFIX} ==="
 cmake --install "${BUILD_DIR}" --prefix "${PREFIX}"

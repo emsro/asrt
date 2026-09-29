@@ -3,7 +3,7 @@ clang-tidy:
 	SDKROOT=$$(xcrun --show-sdk-path 2>/dev/null || true); \
 	EXTRA=; \
 	if [ -n "$$SDKROOT" ]; then EXTRA="--extra-arg-before=--sysroot=$$SDKROOT"; fi; \
-	find ./asrtc ./asrtl ./asrtr ./asrtio ./asrtcpp ./asrtlpp ./asrtrpp ./test \( -iname "*.h" -o -iname "*.c" -o -iname "*.cpp" -o -iname "*.hpp" \) -not -path '*/test/component/*' -not \( -path '*/test/*' \( -iname "*.h" -o -iname "*.hpp" \) \) | xargs clang-tidy -p ./_build/ $$EXTRA --warnings-as-errors='*'
+	find ./asrtc ./asrtl ./asrtr ./asrtio ./asrtcpp ./asrtlpp ./asrtrpp ./test \( -iname "*.h" -o -iname "*.c" -o -iname "*.cpp" -o -iname "*.hpp" \) -not -path '*/test/component/*' -not \( -path '*/test/*' \( -iname "*.h" -o -iname "*.hpp" \) \) | xargs clang-tidy -p ./_build/debug/ $$EXTRA --warnings-as-errors='*'
 
 # Build the Docker CI image (cached after first run)
 docker-image:

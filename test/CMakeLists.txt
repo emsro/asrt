@@ -40,7 +40,7 @@ add_test(NAME asrtio_rsim COMMAND asrtio rsim)
 set_tests_properties(asrtio_rsim PROPERTIES TIMEOUT 30)
 
 # Interactive progress-bar demo — not a CTest test, just a visual sanity check
-# Run manually:  ./_build/test/pbar_demo [--fast] [--total 40]
+# Run manually:  ./_build/debug/test/pbar_demo [--fast] [--total 40]
 add_executable(pbar_demo pbar_demo.cpp)
 target_compile_features(pbar_demo PUBLIC cxx_std_20)
 target_link_libraries(pbar_demo PRIVATE CLI11::CLI11)

@@ -3,7 +3,7 @@
   "configurePresets": [
     {
       "name": "debug",
-      "binaryDir": "_build",
+      "binaryDir": "${sourceDir}/_build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -42,10 +42,18 @@
     },
     {
       "name": "release",
-      "binaryDir": "_build",
+      "binaryDir": "${sourceDir}/_build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "release-c",
+      "inherits": "release",
+      "cacheVariables": {
+        "ASRT_LIBRARIES": "asrtl;asrtc;asrtr",
+        "BUILD_TESTING": "OFF"
       }
     }
   ],
@@ -69,6 +77,10 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "release-c",
+      "configurePreset": "release-c"
     }
   ],
   "testPresets": [
