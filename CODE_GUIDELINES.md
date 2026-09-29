@@ -20,6 +20,7 @@ Use CMake workflow presets to build and test the project.
   - `cmake --workflow --preset debug`
 - Other supported presets:
   - `asan`, `ubsan`, `coverage`, `release`
+  - `windows-debug` (Windows only)
 
 ## 3. Required Fix Workflow (Test-First)
 
