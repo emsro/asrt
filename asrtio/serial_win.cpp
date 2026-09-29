@@ -177,8 +177,10 @@ private:
                 for ( ;; ) {
                         ResetEvent( _read_ev );
                         if ( !ReadFile( _port, buf, sizeof buf, nullptr, &rd ) &&
-                             GetLastError() != ERROR_IO_PENDING )
-                                return fail();
+                             GetLastError() != ERROR_IO_PENDING ) {
+                                fail();
+                                return;
+                        }
 
                         // Completed or pending, the read signals _read_ev when it finishes.
                         for ( bool pending = true; pending; ) {
@@ -186,8 +188,10 @@ private:
                                 DWORD  w      = WaitForMultipleObjects( 2, evs, FALSE, INFINITE );
                                 if ( w == WAIT_OBJECT_0 ) {
                                         DWORD n = 0;
-                                        if ( !GetOverlappedResult( _port, &rd, &n, FALSE ) )
-                                                return fail();
+                                        if ( !GetOverlappedResult( _port, &rd, &n, FALSE ) ) {
+                                                fail();
+                                                return;
+                                        }
                                         if ( n > 0 )
                                                 _sink->on_rx(
                                                     std::span< uint8_t const >{ buf, n } );
@@ -200,7 +204,8 @@ private:
                                                 return;
                                         }
                                 } else {
-                                        return fail();
+                                        fail();
+                                        return;
                                 }
                         }
                 }

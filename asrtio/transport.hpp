@@ -65,7 +65,7 @@ struct serial_config
 // human-readable description.
 // ---------------------------------------------------------------------------
 
-#if !defined( _WIN32 )
+#ifndef _WIN32
 int open_serial_port( serial_config const& cfg, std::string& errmsg );
 #endif
 
@@ -114,8 +114,13 @@ std::unique_ptr< serial_worker > open_serial_worker(
 template < typename H >
 struct uv_stream_transport
 {
+        explicit uv_stream_transport( std::shared_ptr< H > handle )
+          : h( std::move( handle ) )
+        {
+        }
+
         std::shared_ptr< H >             h;
-        std::unique_ptr< stream_reader > reader = {};
+        std::unique_ptr< stream_reader > reader;
 
         uv_loop_t* loop() const { return h->loop; }
 
