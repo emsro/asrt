@@ -30,7 +30,6 @@ namespace asrtio
 using asrt::opt;
 namespace
 {
-pbar::terminal_progress  g_bar;
 pbar::terminal_progress* g_active_bar = nullptr;
 asrt_log_level           g_log_level  = ASRT_LOG_ERROR;
 std::ostream*            g_log_file   = nullptr;
@@ -61,14 +60,15 @@ struct tcp_opts
 int main( int argc, char* argv[] )
 {
         using namespace asrtio;
-        uv_loop_t* loop = uv_default_loop();
+        pbar::terminal_progress bar;
+        uv_loop_t*              loop = uv_default_loop();
         std::optional< asrtio::complete_arena_connect_result< task< void >, final_receiver > > t;
         asrt::malloc_free_memory_resource mem_res;
         real_fs                           rfs;
         null_fs                           nfs;
         task_ctx                          ctx{ mem_res };
         arena                             ar{ ctx, mem_res };
-        pbar_reporter                     pr{ ctx, g_bar };
+        pbar_reporter                     pr{ ctx, bar };
         steady_clock                      clk;
         uv_idle_t                         idle;
         CLI::App                          app{ "App description" };
@@ -114,7 +114,7 @@ int main( int argc, char* argv[] )
                     ar,
                     make_task( timeout, std::move( params ) ),
                     final_receiver{ &idle, &g_active_bar } );
-                g_active_bar = &g_bar;
+                g_active_bar = &bar;
         };
 
         sub->callback( [&, opt] {
@@ -233,7 +233,8 @@ int main( int argc, char* argv[] )
 
         uv_run( loop, UV_RUN_DEFAULT );
         uv_loop_close( loop );
-        g_bar.finish();
+        bar.finish();
+        g_active_bar = nullptr;
 
         g_log_file = nullptr;
         log_writer.reset();
