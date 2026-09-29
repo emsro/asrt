@@ -66,6 +66,8 @@ constexpr status to_status( ecor::task_error e ) noexcept
         case ecor::task_error::task_missing:
                 return ASRT_INTERNAL_ERR;
         }
+        // Only reached for a value outside the enumeration.
+        return ASRT_INTERNAL_ERR;
 }
 
 /// Error signatures and trace policy used by all asrt tasks.

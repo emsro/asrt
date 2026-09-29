@@ -1409,7 +1409,7 @@ struct param_sender_ctx
         {
                 struct test_recv
                 {
-                        using receiver_concept = ecor::receiver_t;
+                        using receiver_concept [[maybe_unused]] = ecor::receiver_t;
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }
@@ -2019,7 +2019,7 @@ struct collect_sender_ctx : collect_cpp_ctx
         {
                 struct test_recv
                 {
-                        using receiver_concept = ecor::receiver_t;
+                        using receiver_concept [[maybe_unused]] = ecor::receiver_t;
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }
@@ -2653,7 +2653,7 @@ struct diag_sender_ctx : diag_ctx
         {
                 struct test_recv
                 {
-                        using receiver_concept = ecor::receiver_t;
+                        using receiver_concept [[maybe_unused]] = ecor::receiver_t;
                         asrt_test_state* out;
 
                         void set_value() { *out = ASRT_TEST_PASS; }

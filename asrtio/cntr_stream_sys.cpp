@@ -103,7 +103,7 @@ void write_stream_csv(
 }
 
 task< void > handle_stream(
-    task_ctx&                    ctx,
+    task_ctx& /*ctx*/,
     asrt::stream_schemas         schemas,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -125,7 +125,7 @@ task< void > handle_stream(
 }
 
 task< void > handle_collect(
-    task_ctx&                    ctx,
+    task_ctx& /*ctx*/,
     asrt_flat_tree const*        tree,
     suite_reporter&              reporter,
     std::string_view             name,
@@ -146,7 +146,7 @@ task< void > handle_collect(
 }
 
 task< void > handle_diag(
-    task_ctx&                    ctx,
+    task_ctx& /*ctx*/,
     cntr_sys&                    sys,
     suite_reporter&              reporter,
     output_fs&                   fs,
