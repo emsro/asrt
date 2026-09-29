@@ -27,12 +27,14 @@
 
 #include <chrono>
 #include <doctest/doctest.h>
-#include <fcntl.h>
 #include <map>
 #include <span>
+
+#ifndef _WIN32
+#include <fcntl.h>
 #include <termios.h>
 #include <unistd.h>
-
+#endif
 #if defined( __APPLE__ )
 #include <util.h>
 #elif defined( __linux__ )
@@ -2079,6 +2081,7 @@ TEST_CASE( "strm_field_type_to_str" )
 // serial transport tests (pty-based, no hardware required)
 // ---------------------------------------------------------------------------
 
+#ifndef _WIN32
 static void open_pty_pair( int& master, int& slave )
 {
         int m = -1;
@@ -2126,6 +2129,8 @@ TEST_CASE( "serial_open_and_configure" )
         close( master );
 }
 
+#endif
+
 TEST_CASE( "serial_open_bad_path" )
 {
         asrtio::serial_config cfg;
@@ -2141,6 +2146,7 @@ TEST_CASE( "serial_open_bad_path" )
 // serial transport integration test (pty pair + cntr_stream_sys)
 // ---------------------------------------------------------------------------
 
+#ifndef _WIN32
 static asrtio::task< void > suite_serial_coro(
     asrtio::task_ctx&     tctx,
     asrtio::arena&        arena,
@@ -2210,3 +2216,4 @@ TEST_CASE( "suite_serial_pty" )
         CHECK( reporter.starts.size() == reporter.count );
         CHECK( reporter.done_names.size() == reporter.count );
 }
+#endif
