@@ -90,7 +90,7 @@ static inline enum asrt_status asrt_collect_client_insert_object(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_CTYPE_OBJECT };
+        struct asrt_flat_value v = { .type = ASRT_FLAT_CTYPE_OBJECT, .data = { .cont = { 0, 0 } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, out_id, done_cb, done_ptr );
 }
 
@@ -103,7 +103,7 @@ static inline enum asrt_status asrt_collect_client_insert_array(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_CTYPE_ARRAY };
+        struct asrt_flat_value v = { .type = ASRT_FLAT_CTYPE_ARRAY, .data = { .cont = { 0, 0 } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, out_id, done_cb, done_ptr );
 }
 
@@ -116,8 +116,8 @@ static inline enum asrt_status asrt_collect_client_insert_u32(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_U32 };
-        v.data.s.u32_val         = val;
+        struct asrt_flat_value v = {
+            .type = ASRT_FLAT_STYPE_U32, .data = { .s = { .u32_val = val } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 
@@ -130,8 +130,8 @@ static inline enum asrt_status asrt_collect_client_insert_i32(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_I32 };
-        v.data.s.i32_val         = val;
+        struct asrt_flat_value v = {
+            .type = ASRT_FLAT_STYPE_I32, .data = { .s = { .i32_val = val } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 
@@ -144,8 +144,8 @@ static inline enum asrt_status asrt_collect_client_insert_str(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_STR };
-        v.data.s.str_val         = val;
+        struct asrt_flat_value v = {
+            .type = ASRT_FLAT_STYPE_STR, .data = { .s = { .str_val = val } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 
@@ -158,8 +158,8 @@ static inline enum asrt_status asrt_collect_client_insert_bool(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_BOOL };
-        v.data.s.bool_val        = val;
+        struct asrt_flat_value v = {
+            .type = ASRT_FLAT_STYPE_BOOL, .data = { .s = { .bool_val = val } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 
@@ -172,8 +172,8 @@ static inline enum asrt_status asrt_collect_client_insert_float(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_FLOAT };
-        v.data.s.float_val       = val;
+        struct asrt_flat_value v = {
+            .type = ASRT_FLAT_STYPE_FLOAT, .data = { .s = { .float_val = val } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 
@@ -185,7 +185,7 @@ static inline enum asrt_status asrt_collect_client_insert_null(
     asrt_collect_done_cb        done_cb,
     void*                       done_ptr )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_NULL };
+        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_NULL, .data = { .cont = { 0, 0 } } };
         return asrt_collect_client_insert( client, parent_id, key, &v, NULL, done_cb, done_ptr );
 }
 

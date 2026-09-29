@@ -96,7 +96,7 @@ ASRT_NODISCARD inline flat_id root_id( asrt_collect_client const& cc )
 inline asrt_flat_value make_collect_scalar_value( auto val, auto member, auto type )
 {
         using member_type = decltype( asrt_flat_scalar{}.*member );
-        asrt_flat_value v = { .type = static_cast< asrt_flat_value_type >( type ) };
+        asrt_flat_value v = { .type = static_cast< asrt_flat_value_type >( type ), .data = {} };
         v.data.s.*member  = static_cast< member_type >( val );
         return v;
 }
@@ -180,7 +180,7 @@ status set(
 {
         using traits             = collect_append_traits< T >;
         using member_type        = decltype( asrt_flat_scalar{}.*traits::member );
-        asrt_flat_value v        = { .type = traits::flat_type };
+        asrt_flat_value v        = { .type = traits::flat_type, .data = {} };
         v.data.s.*traits::member = static_cast< member_type >( val );
         return asrt_collect_client_insert( &cc, parent, key, &v, NULL, done_cb.fn, done_cb.ptr );
 }
@@ -219,7 +219,7 @@ status set(
     callback< asrt_send_done_cb > done_cb )
 {
         using traits      = collect_append_traits< T >;
-        asrt_flat_value v = { .type = traits::flat_type };
+        asrt_flat_value v = { .type = traits::flat_type, .data = {} };
         return asrt_collect_client_insert( &cc, parent, key, &v, &out, done_cb.fn, done_cb.ptr );
 }
 
@@ -229,7 +229,7 @@ ecor::sender auto set( asrt_collect_client& client, flat_id parent, char const* 
 {
         using traits = collect_append_traits< T >;
         return collect_container_insert_sender{
-            { &client, parent, key, { .type = traits::flat_type } } };
+            { &client, parent, key, { .type = traits::flat_type, .data = {} } } };
 }
 
 /// Container append without key (array child): append<obj>(parent, out_id).

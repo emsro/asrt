@@ -642,9 +642,15 @@ static size_t create_channel_message(
 
 TEST_CASE( "chann_cobs_dispatch_single_message" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 42, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 42,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0xAA, 0xBB, 0xCC };
         uint8_t encoded[128];
@@ -666,9 +672,15 @@ TEST_CASE( "chann_cobs_dispatch_single_message" )
 
 TEST_CASE( "chann_cobs_dispatch_multiple_messages" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 10, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 10,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t msg1[] = { 0x11, 0x22 };
         uint8_t msg2[] = { 0x33, 0x44, 0x55 };
@@ -699,9 +711,15 @@ TEST_CASE( "chann_cobs_dispatch_multiple_messages" )
 
 TEST_CASE( "chann_cobs_dispatch_partial_then_complete" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 20, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 20,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0xDE, 0xAD, 0xBE, 0xEF };
         uint8_t encoded[128];
@@ -731,9 +749,15 @@ TEST_CASE( "chann_cobs_dispatch_partial_then_complete" )
 
 TEST_CASE( "chann_cobs_dispatch_empty_payload" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 99, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 99,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t encoded[128];
         size_t  enc_len = create_channel_message( 99, NULL, 0, encoded, sizeof encoded );
@@ -752,16 +776,34 @@ TEST_CASE( "chann_cobs_dispatch_empty_payload" )
 
 TEST_CASE( "chann_cobs_dispatch_multiple_channels" )
 {
-        struct test_channel_ctx ctx1 = { .return_status = ASRT_SUCCESS };
-        struct test_channel_ctx ctx2 = { .return_status = ASRT_SUCCESS };
-        struct test_channel_ctx ctx3 = { .return_status = ASRT_SUCCESS };
+        struct test_channel_ctx ctx1 = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct test_channel_ctx ctx2 = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct test_channel_ctx ctx3 = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
 
         struct asrt_node node3 = {
-            .chid = 30, .e_cb_ptr = &ctx3, .e_cb = test_channel_recv_cb, .next = NULL };
+            .chid       = 30,
+            .e_cb_ptr   = &ctx3,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
         struct asrt_node node2 = {
-            .chid = 20, .e_cb_ptr = &ctx2, .e_cb = test_channel_recv_cb, .next = &node3 };
+            .chid       = 20,
+            .e_cb_ptr   = &ctx2,
+            .e_cb       = test_channel_recv_cb,
+            .next       = &node3,
+            .prev       = NULL,
+            .send_queue = NULL };
         struct asrt_node node1 = {
-            .chid = 10, .e_cb_ptr = &ctx1, .e_cb = test_channel_recv_cb, .next = &node2 };
+            .chid       = 10,
+            .e_cb_ptr   = &ctx1,
+            .e_cb       = test_channel_recv_cb,
+            .next       = &node2,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload1[] = { 0x01 };
         uint8_t payload2[] = { 0x02, 0x02 };
@@ -794,9 +836,15 @@ TEST_CASE( "chann_cobs_dispatch_multiple_channels" )
 
 TEST_CASE( "chann_cobs_dispatch_unknown_channel" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 42, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 42,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0xAA };
         uint8_t encoded[128];
@@ -817,9 +865,15 @@ TEST_CASE( "chann_cobs_dispatch_unknown_channel" )
 
 TEST_CASE( "chann_cobs_dispatch_incremental_state" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 7, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 7,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t msg1[] = { 0x11 };
         uint8_t msg2[] = { 0x22, 0x22 };
@@ -855,9 +909,15 @@ TEST_CASE( "chann_cobs_dispatch_incremental_state" )
 
 TEST_CASE( "chann_cobs_dispatch_message_too_large" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 5, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 5,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         // Create a message larger than the internal 1024-byte buffer
         uint8_t large_payload[1200];
@@ -881,9 +941,15 @@ TEST_CASE( "chann_cobs_dispatch_message_too_large" )
 
 TEST_CASE( "chann_cobs_dispatch_mixed_partial_and_complete" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 15, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 15,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t msg1[] = { 0xF1 };
         uint8_t msg2[] = { 0xF2, 0xF2 };
@@ -918,9 +984,15 @@ TEST_CASE( "chann_cobs_dispatch_mixed_partial_and_complete" )
 
 TEST_CASE( "chann_cobs_dispatch_byte_by_byte" )
 {
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 88, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 88,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0xCA, 0xFE };
         uint8_t encoded[128];
@@ -947,9 +1019,15 @@ TEST_CASE( "chann_cobs_dispatch_ibuffer_size_err" )
 {
         // ibuffer too small for the incoming encoded message — insert must return SIZE_ERR
         // and cobs_dispatch must propagate it rather than silently succeed
-        struct test_channel_ctx ctx  = { .return_status = ASRT_SUCCESS };
-        struct asrt_node        node = {
-                   .chid = 1, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_SUCCESS };
+        struct asrt_node node = {
+            .chid       = 1,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0x01, 0x02, 0x03, 0x04, 0x05 };
         uint8_t encoded[128];
@@ -969,9 +1047,15 @@ TEST_CASE( "chann_cobs_dispatch_ibuffer_size_err" )
 TEST_CASE( "chann_cobs_dispatch_recv_cb_error" )
 {
         // When recv_cb returns an error, cobs_dispatch must propagate it
-        struct test_channel_ctx ctx  = { .return_status = ASRT_INTERNAL_ERR };
-        struct asrt_node        node = {
-                   .chid = 1, .e_cb_ptr = &ctx, .e_cb = test_channel_recv_cb, .next = NULL };
+        struct test_channel_ctx ctx = {
+            .messages = {}, .msg_count = 0, .return_status = ASRT_INTERNAL_ERR };
+        struct asrt_node node = {
+            .chid       = 1,
+            .e_cb_ptr   = &ctx,
+            .e_cb       = test_channel_recv_cb,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL };
 
         uint8_t payload[] = { 0xAB };
         uint8_t encoded[64];
@@ -2112,14 +2196,14 @@ TEST_CASE( "flat_tree_find_by_key_leaf_parent" )
 
 TEST_CASE( "flat_tree_u32d2_wire_size" )
 {
-        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_U32D2 };
+        struct asrt_flat_value v = { .type = ASRT_FLAT_STYPE_U32D2, .data = {} };
         CHECK_EQ( 8U, asrt_flat_value_wire_size( v ) );
 }
 
 TEST_CASE( "flat_tree_u32d2_write_and_decode" )
 {
         struct asrt_flat_u32d2 orig    = { .hi = 0x12345678U, .lo = 0xABCDEF00U };
-        struct asrt_flat_value v_write = { .type = ASRT_FLAT_STYPE_U32D2 };
+        struct asrt_flat_value v_write = { .type = ASRT_FLAT_STYPE_U32D2, .data = {} };
         v_write.data.s.u32d2_val       = orig;
 
         uint8_t  buf[8];
@@ -2287,11 +2371,12 @@ TEST_CASE( "strm_proto: data propagates callback error" )
 static struct asrt_node make_node( asrt_chann_id chid )
 {
         return ( struct asrt_node ){
-            .chid     = chid,
-            .e_cb_ptr = NULL,
-            .e_cb     = NULL,
-            .next     = NULL,
-            .prev     = NULL,
+            .chid       = chid,
+            .e_cb_ptr   = NULL,
+            .e_cb       = NULL,
+            .next       = NULL,
+            .prev       = NULL,
+            .send_queue = NULL,
         };
 }
 
@@ -2395,9 +2480,7 @@ TEST_CASE( "send_req_list_done_calls_done_cb_with_status" )
 {
         struct asrt_u8d1msg msg = {};
 
-        enum asrt_status  received_status = ASRT_SUCCESS;
-        void*             received_ptr    = NULL;
-        static char const sentinel        = 0;
+        static char const sentinel = 0;
 
         msg.req.done_ptr = (void*) &sentinel;
         msg.req.done_cb  = []( void* ptr, enum asrt_status st ) {
@@ -2488,7 +2571,7 @@ TEST_CASE( "collect_append_null_key_span_points_into_msg" )
         // If span[0].b == &nul (stack-local inside the function) the pointer is dangling
         // by the time the caller drains the queue.
         struct asrt_collect_append_msg msg = {};
-        struct asrt_flat_value         val = { .type = ASRT_FLAT_STYPE_U32 };
+        struct asrt_flat_value         val = { .type = ASRT_FLAT_STYPE_U32, .data = {} };
         val.data.s.u32_val                 = 42;
 
         struct asrt_send_req* req = asrt_msg_rtoc_collect_append( &msg, 0, 1, /*key=*/NULL, &val );

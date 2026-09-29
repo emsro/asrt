@@ -38,7 +38,7 @@ struct _complete_arena_sender
         S      s;
 
         template < typename R >
-        struct op : ecor::schedulable
+        struct op final : ecor::schedulable
         {
                 using operation_state_concept = ecor::operation_state_t;
                 using arena_sender            = decltype( std::declval< arena >().async_destroy() );

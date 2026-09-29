@@ -257,7 +257,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_test_info" )
         enum asrt_status st;
         check_cntr_full_init( this );
 
-        struct test_info_result p = { 0 };
+        struct test_info_result p = {};
         st = asrt_cntr_test_info( &cntr, 42, &cpy_test_info_cb, (void*) &p, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );
@@ -285,7 +285,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_test_info_tid_mismatch" )
 {
         check_cntr_full_init( this );
 
-        struct test_info_result p = { 0 };
+        struct test_info_result p = {};
         enum asrt_status st = asrt_cntr_test_info( &cntr, 42, &cpy_test_info_cb, (void*) &p, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );
@@ -658,7 +658,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_recv_test_error_result" )
 {
         check_cntr_full_init( this );
 
-        struct asrt_result res = { 0 };
+        struct asrt_result res = {};
         enum asrt_status   st  = asrt_cntr_test_exec( &cntr, 42, result_cb, &res, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );
@@ -677,7 +677,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_test_exec_wrong_run_id" )
 {
         check_cntr_full_init( this );
 
-        struct asrt_result res = { 0 };
+        struct asrt_result res = {};
         enum asrt_status   st  = asrt_cntr_test_exec( &cntr, 42, result_cb, &res, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );  // sends TEST_START request
@@ -785,7 +785,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_recv_truncated_test_info" )
 {
         check_cntr_full_init( this );
 
-        struct test_info_result p  = { 0 };
+        struct test_info_result p  = {};
         enum asrt_status        st = asrt_cntr_test_info( &cntr, 7, &cpy_test_info_cb, &p, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );
@@ -1190,7 +1190,7 @@ TEST_CASE_FIXTURE( controller_ctx, "cntr_recv_truncated_exec" )
 {
         check_cntr_full_init( this );
 
-        struct asrt_result res = { 0 };
+        struct asrt_result res = {};
         enum asrt_status   st  = asrt_cntr_test_exec( &cntr, 1, result_cb, &res, 1000 );
         CHECK_EQ( ASRT_SUCCESS, st );
         check_tick( &cntr, t++ );
@@ -2138,7 +2138,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_builds_tree" )
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2147,7 +2147,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_builds_tree" )
         // Append child u32 (parent=1, node=2, key="alpha", value=42)
         struct asrt_flat_value val
         {
-                .type = ASRT_FLAT_STYPE_U32
+                .type = ASRT_FLAT_STYPE_U32, .data = {}
         };
         val.data.s.u32_val = 42;
         ae                 = build_collect_append( abuf, 1, 2, "alpha", &val );
@@ -2181,7 +2181,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_string_value" )
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2190,7 +2190,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_string_value" )
         // Append string child
         struct asrt_flat_value str_val
         {
-                .type = ASRT_FLAT_STYPE_STR
+                .type = ASRT_FLAT_STYPE_STR, .data = {}
         };
         str_val.data.s.str_val = "hello";
         ae                     = build_collect_append( abuf, 1, 2, "msg", &str_val );
@@ -2209,7 +2209,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_before_active_return
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         CHECK_EQ(
@@ -2232,7 +2232,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_back_to_back_appends" )
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2240,7 +2240,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_back_to_back_appends" )
         // Second append WITHOUT tick() in between — simulates burst arrival
         struct asrt_flat_value val
         {
-                .type = ASRT_FLAT_STYPE_U32
+                .type = ASRT_FLAT_STYPE_U32, .data = {}
         };
         val.data.s.u32_val = 42;
         ae                 = build_collect_append( abuf, 1, 2, "alpha", &val );
@@ -2276,7 +2276,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_duplicate_sends_erro
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2395,7 +2395,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_ready_ack_reinits_tree" )
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2438,7 +2438,7 @@ TEST_CASE_FIXTURE( collect_ctx, "asrt_collect_server_append_alloc_failure_sends_
         uint8_t abuf[128];
         struct asrt_flat_value obj
         {
-                .type = ASRT_FLAT_CTYPE_OBJECT
+                .type = ASRT_FLAT_CTYPE_OBJECT, .data = {}
         };
         uint8_t* ae = build_collect_append( abuf, 0, 1, NULL, &obj );
         check_recv( &server, ( struct asrt_span ){ .b = abuf, .e = ae } );
@@ -2592,7 +2592,7 @@ TEST_CASE_FIXTURE( collect_loopback_ctx, "collect_loopback_duplicate_node_sends_
         // through the loopback to test the server ERROR path.
         struct asrt_flat_value dup
         {
-                .type = ASRT_FLAT_STYPE_U32
+                .type = ASRT_FLAT_STYPE_U32, .data = {}
         };
         dup.data.s.u32_val = 42;
         uint8_t          buf[256];
@@ -2621,7 +2621,7 @@ TEST_CASE_FIXTURE( collect_loopback_ctx, "collect_loopback_append_after_error_re
         // Force duplicate via raw message
         struct asrt_flat_value dup
         {
-                .type = ASRT_FLAT_STYPE_U32
+                .type = ASRT_FLAT_STYPE_U32, .data = {}
         };
         dup.data.s.u32_val = 1;
         uint8_t          buf[256];

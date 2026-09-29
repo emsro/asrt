@@ -725,7 +725,7 @@ TEST_CASE_FIXTURE( collect_server_ctx, "collect_server_append_builds_tree" )
         make_active();
 
         // Append: parent=0, node_id=1, key="root", type=OBJECT
-        asrt_flat_value obj_val = { .type = ASRT_FLAT_CTYPE_OBJECT };
+        asrt_flat_value obj_val = { .type = ASRT_FLAT_CTYPE_OBJECT, .data = {} };
         uint8_t         buf[256];
         CHECK_EQ(
             ASRT_SUCCESS,
@@ -734,7 +734,7 @@ TEST_CASE_FIXTURE( collect_server_ctx, "collect_server_append_builds_tree" )
         CHECK_EQ( ASRT_SUCCESS, asrt::tick( asrt::node( srv ), t++ ) );
 
         // Append: parent=1, node_id=2, key="val", type=U32, value=42
-        asrt_flat_value u32_val = { .type = ASRT_FLAT_STYPE_U32 };
+        asrt_flat_value u32_val = { .type = ASRT_FLAT_STYPE_U32, .data = {} };
         u32_val.data.s.u32_val  = 42;
         CHECK_EQ(
             ASRT_SUCCESS,
@@ -762,7 +762,7 @@ TEST_CASE_FIXTURE( collect_server_ctx, "collect_server_append_string_value" )
 {
         make_active();
 
-        asrt_flat_value str_val = { .type = ASRT_FLAT_STYPE_STR };
+        asrt_flat_value str_val = { .type = ASRT_FLAT_STYPE_STR, .data = {} };
         str_val.data.s.str_val  = "hello";
         uint8_t buf[256];
         CHECK_EQ(
@@ -783,7 +783,7 @@ TEST_CASE_FIXTURE( collect_server_ctx, "collect_server_duplicate_append_sends_er
 {
         make_active();
 
-        asrt_flat_value u32_val = { .type = ASRT_FLAT_STYPE_U32 };
+        asrt_flat_value u32_val = { .type = ASRT_FLAT_STYPE_U32, .data = {} };
         u32_val.data.s.u32_val  = 1;
         uint8_t buf[256];
         CHECK_EQ(

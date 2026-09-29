@@ -2222,10 +2222,6 @@ TEST_CASE_FIXTURE( collect_client_ctx, "asrt_collect_client_insert_done_cb_calle
 
         int              called = 0;
         enum asrt_status cb_st  = ASRT_SUCCESS;
-        auto             cb     = []( void* p, enum asrt_status st ) {
-                *static_cast< int* >( p ) += 1;
-                (void) st;  // stored separately via cb_st capture below
-        };
         // Use a stateful lambda via a lambda-to-fptr adapter
         struct ctx_s
         {
@@ -2238,7 +2234,7 @@ TEST_CASE_FIXTURE( collect_client_ctx, "asrt_collect_client_insert_done_cb_calle
                 *c->st = st;
         };
 
-        asrt_flat_value val_x = { .type = ASRT_FLAT_STYPE_U32 };
+        asrt_flat_value val_x = { .type = ASRT_FLAT_STYPE_U32, .data = {} };
         CHECK_EQ(
             ASRT_SUCCESS,
             asrt_collect_client_insert( &client, 0, "x", &val_x, nullptr, fptr, &ctx ) );
@@ -2268,7 +2264,7 @@ TEST_CASE_FIXTURE( collect_client_ctx, "asrt_collect_client_insert_done_cb_calle
                 *c->st = st;
         };
 
-        asrt_flat_value val_y = { .type = ASRT_FLAT_STYPE_U32 };
+        asrt_flat_value val_y = { .type = ASRT_FLAT_STYPE_U32, .data = {} };
         CHECK_EQ(
             ASRT_SUCCESS,
             asrt_collect_client_insert( &client, 0, "y", &val_y, nullptr, fptr, &ctx ) );

@@ -2072,8 +2072,20 @@ struct strm_cpp_ctx
         asrt_send_req_list sq_r = {};
         asrt_send_req_list sq_c = {};
 
-        asrt_node root_r = { .chid = ASRT_CORE };
-        asrt_node root_c = { .chid = ASRT_CORE };
+        asrt_node root_r = {
+            .chid       = ASRT_CORE,
+            .e_cb_ptr   = nullptr,
+            .e_cb       = nullptr,
+            .next       = nullptr,
+            .prev       = nullptr,
+            .send_queue = nullptr };
+        asrt_node root_c = {
+            .chid       = ASRT_CORE,
+            .e_cb_ptr   = nullptr,
+            .e_cb       = nullptr,
+            .next       = nullptr,
+            .prev       = nullptr,
+            .send_queue = nullptr };
 
         asrt_stream_client client;
         asrt_stream_server server;
@@ -2402,10 +2414,6 @@ TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_cpp: emit with null done_cb succeeds" )
 
 TEST_CASE_FIXTURE( strm_cpp_ctx, "strm_schema: emit done_cb fires via tick" )
 {
-        asrt_status done_st;
-        auto        done_cb = []( void* p, enum asrt_status s ) {
-                *static_cast< asrt_status* >( p ) = s;
-        };
         asrt::stream_schema< uint8_t > schema( client, 0, {} );
         tick_client();
 

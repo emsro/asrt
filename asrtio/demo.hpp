@@ -30,6 +30,7 @@
 #include <random>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace asrtio
 {
@@ -553,7 +554,7 @@ struct param_query_demo_task : asrt::task_test
                 // Query param node with ID 1
                 auto x = co_await asrt::fetch< uint32_t >( pc, 1 );
                 auto y = co_await asrt::fetch< int32_t >( pc, 1 );
-                if ( x != y )
+                if ( std::cmp_not_equal( x.value, y.value ) )
                         co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };
@@ -576,7 +577,7 @@ struct param_query_find_demo_task : asrt::task_test
                 // Query param node with key "count" under root
                 auto x = co_await asrt::find< uint32_t >( pc, asrt::root_id( pc ), "count" );
                 auto y = co_await asrt::find< int32_t >( pc, asrt::root_id( pc ), "count" );
-                if ( x != y )
+                if ( std::cmp_not_equal( x.value, y.value ) )
                         co_yield asrt::with_error{ ASRT_FAILURE };
         }
 };

@@ -1318,7 +1318,6 @@ TEST_CASE( "fttj_error_empty_tree" )
         asrt_allocator alloc = asrt_default_allocator();
         asrt_flat_tree tree;
         REQUIRE_EQ( ASRT_SUCCESS, asrt_flat_tree_init( &tree, alloc, 4, 8 ) );
-        asrt::flat_id next_id = 1;
 
         nlohmann::json out;
         CHECK_FALSE( asrtio::flat_tree_to_json( tree, out ) );
