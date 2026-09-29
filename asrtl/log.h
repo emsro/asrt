@@ -41,6 +41,13 @@ void asrt_log( enum asrt_log_level level, char const* module, char const* fmt, .
 /// Log an ERROR message from the given @p module.
 #define ASRT_ERR_LOG( module, ... ) asrt_log( ASRT_LOG_ERROR, module, __VA_ARGS__ )
 
+/// Fill the `struct tm` at @p tm with the local time of the `time_t` at @p t.
+#if defined( _WIN32 )
+#define ASRT_LOCALTIME( t, tm ) localtime_s( ( tm ), ( t ) )
+#else
+#define ASRT_LOCALTIME( t, tm ) localtime_r( ( t ), ( tm ) )
+#endif
+
 /// Define the log backend implementation (asrt_log_impl) with timestamps and
 /// ANSI colour-coded level prefixes, writing to stderr.
 #define ASRT_DEFINE_GPOS_LOG_IMPL                                                             \
@@ -66,7 +73,7 @@ void asrt_log( enum asrt_log_level level, char const* module, char const* fmt, .
                 char      timebuf[32];                                                        \
                 time_t    t = time( NULL );                                                   \
                 struct tm tm;                                                                 \
-                localtime_r( &t, &tm );                                                       \
+                ASRT_LOCALTIME( &t, &tm );                                                    \
                 strftime( timebuf, sizeof( timebuf ), "%Y%m%d %H%M%S", &tm );                 \
                                                                                               \
                 fprintf( stderr, "%s %s %s :: ", timebuf, module ? module : "-", level_str ); \

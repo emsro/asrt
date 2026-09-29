@@ -12,6 +12,10 @@ target_compile_features(asrtio_lib PUBLIC cxx_std_20)
 target_include_directories(asrtio_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv ecor
                                         nlohmann_json::nlohmann_json)
+if(WIN32)
+  # <windows.h>, included through libuv, must not define min/max macros.
+  target_compile_definitions(asrtio_lib PUBLIC NOMINMAX)
+endif()
 
 add_executable(asrtio main.cpp)
 target_link_libraries(asrtio PUBLIC asrtio_lib CLI11::CLI11)

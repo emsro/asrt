@@ -617,7 +617,7 @@ static enum asrt_status test_channel_recv_cb( void* ptr, enum asrt_event_e event
                 return ASRT_INTERNAL_ERR;
 
         struct test_msg_record* rec = &ctx->messages[ctx->msg_count++];
-        rec->size                   = std::min( buff.e - buff.b, (long) sizeof( rec->data ) );
+        rec->size = std::min( buff.e - buff.b, (std::ptrdiff_t) sizeof( rec->data ) );
         memcpy( rec->data, buff.b, rec->size );
 
         return ctx->return_status;
