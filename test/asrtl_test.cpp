@@ -2258,11 +2258,14 @@ static uint32_t strm_flatten( uint8_t* out, struct asrt_send_req const* req )
 {
         uint32_t len = 0;
         size_t   n   = (size_t) ( req->buff.e - req->buff.b );
-        memcpy( out + len, req->buff.b, n );
+        // memcpy requires non-null pointers even when n is 0.
+        if ( n > 0 )
+                memcpy( out + len, req->buff.b, n );
         len += (uint32_t) n;
         for ( asrt_rec_span const* s = req->buff.next; s != nullptr; s = s->next ) {
                 n = (size_t) ( s->e - s->b );
-                memcpy( out + len, s->b, n );
+                if ( n > 0 )
+                        memcpy( out + len, s->b, n );
                 len += (uint32_t) n;
         }
         return len;
