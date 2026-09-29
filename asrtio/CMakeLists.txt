@@ -13,8 +13,9 @@ target_include_directories(asrtio_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(asrtio_lib PUBLIC asrtcpp asrtrpp uv ecor
                                         nlohmann_json::nlohmann_json)
 if(WIN32)
-  # <windows.h>, included through libuv, must not define min/max macros.
-  target_compile_definitions(asrtio_lib PUBLIC NOMINMAX)
+  # <windows.h> must not define min/max macros, nor pull in the old winsock.h
+  # that clashes with the winsock2.h libuv includes.
+  target_compile_definitions(asrtio_lib PUBLIC NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
 
 add_executable(asrtio main.cpp)
